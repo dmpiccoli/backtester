@@ -1,7 +1,7 @@
 
 import datetime as dt
 
-from core.backtester import Backtester
+from core.portfolio_calculator import PortfolioCalculator
 from model.portfolio_manager.future_roll import FutureRoll
 from utils.pcalendar import CalendarType
 
@@ -17,19 +17,12 @@ if __name__ == '__main__':
     #update decision data
     pm.load_data()
 
-    bt = Backtester(portfolio_manager=pm)
+    bt = PortfolioCalculator(portfolio_manager=pm)
     bt.run(end_date=dt.datetime(2024,12,30), run_all=True)
 
     print(dt.datetime.now())
     pm.save()
     print(pm.portfolio.market_data)
-
-    pm2 = Momentum.load(name)
-    pm2.load_data(ticker)
-    bt2 = Backtester(portfolio_manager=pm2)
-    bt2.run(run_all=False)
-
-    print(pm2.portfolio.market_data)
     pass
     # p = portfolio.Portfolio('teste', begin_date=dt.datetime(2022, 5, 31))
 

@@ -90,9 +90,9 @@ class Portfolio(Asset):
 
         Return empty dataframe if the date is not valid
         """
-        d_1 = self.calendar.workday(date, -1)
-        if d_1 in self.market_data.index:
-            nav = self.market_data.loc[self.market_data.index == d_1]['NAV'].values[0]
+        if len(self.market_data.loc[self.market_data.index < date]['NAV']) > 0:
+            nav = self.market_data.loc[self.market_data.index < date]['NAV'].values[-1]
+            d_1 = self.market_data.loc[self.market_data.index < date]['NAV'].index[-1]
         else:
             return pd.DataFrame(columns=['ticker', 'qty', 'price', 'value', 'perc'])
 

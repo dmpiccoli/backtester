@@ -47,7 +47,7 @@ class DataManager:
                 df = lib_data.data
                 meta_data = lib_data.metadata
                 df['ticker'] = t
-                f = Future(ticker=t, calendar=CalendarType.B3, maturity=dt.datetime.max, m=330.0, min_lot=1, cost_bps=15 / 10000,
+                f = Future(ticker=t, calendar=CalendarType.B3, maturity=dt.datetime.max, cost_bps=1 / 10000,
                            cost_unit=0.0, market_data=df, days2settle=1, metadata=meta_data)
                 r[t] = f
 

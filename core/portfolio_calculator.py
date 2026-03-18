@@ -6,7 +6,7 @@ from model.portfolio_manager.portfolio_manager import PortfolioManager
 from utils.pcalendar import Calendar, CalendarType
 
 
-class Backtester:
+class PortfolioCalculator:
     """
     Main engine for running historical backtests on a portfolio.
 
@@ -56,3 +56,4 @@ class Backtester:
             if self.portfolio.calendar.is_business_day(current_date):
                 self.portfolio.process(current_date)
             current_date = no_calendar.workday(date=current_date, bd=1)
+

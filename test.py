@@ -1,7 +1,7 @@
 
 import datetime as dt
 
-from core.backtester import Backtester
+from core.portfolio_calculator import PortfolioCalculator
 from utils.pcalendar import CalendarType
 from model.portfolio_manager.momentum import Momentum
 
@@ -18,7 +18,7 @@ if __name__ == '__main__':
     #update decision data
     pm.load_data(ticker)
 
-    bt = Backtester(portfolio_manager=pm)
+    bt = PortfolioCalculator(portfolio_manager=pm)
     bt.run(end_date=dt.datetime(2024,12,30), run_all=True)
 
     print(dt.datetime.now())
@@ -27,7 +27,7 @@ if __name__ == '__main__':
 
     pm2 = Momentum.load(name)
     pm2.load_data(ticker)
-    bt2 = Backtester(portfolio_manager=pm2)
+    bt2 = PortfolioCalculator(portfolio_manager=pm2)
     bt2.run(run_all=False)
 
     print(pm2.portfolio.market_data)
