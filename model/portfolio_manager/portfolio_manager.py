@@ -6,6 +6,9 @@ from typing import Any
 import pandas as pd
 import pickle
 
+import quantstats as qs
+from benchmarks.common import download_file
+
 from core import const
 from utils.pcalendar import Calendar, CalendarType
 from model.portfolio.portfolio import Portfolio
@@ -89,3 +92,7 @@ class PortfolioManager(ABC):
 
     def process_portfolio(self, end: dt.datetime) -> bool:
         return self.portfolio.process(end)
+
+    def report(self) -> None:
+        qs.reports.html(returns=self.portfolio.market_data.alpha, output=const.MODEL_PATH + self.name + '.html',
+                        download_filename=const.MODEL_PATH + self.name + '.html')

@@ -24,6 +24,7 @@ if __name__ == '__main__':
     print(dt.datetime.now())
     pm.save()
     print(pm.portfolio.market_data)
+    pm.report()
 
     pm2 = Momentum.load(name)
     pm2.load_data(ticker)
