@@ -62,29 +62,7 @@ class Portfolio(Asset):
             else:
                 return pd.DataFrame(columns=['NAV', 'cash', 'close', 'r', 'alpha'])
 
-    def get_position(self, date: dt.datetime) -> pd.DataFrame:
-        """
-        Get all open positions for specific date.
-
-        Return empty dataframe if the date is not valid
-        """
-        if date in self.market_data.index:
-            nav = self.market_data.loc[self.market_data.index == date]['NAV'].values[0]
-        else:
-            return pd.DataFrame(columns=['ticker', 'qty', 'price', 'value', 'perc'])
-
-        pos = pd.DataFrame(columns=['ticker', 'qty', 'price', 'value', 'perc'])
-        if date in self.positions:
-            for p in self.positions[date]['future'].values():
-                tmp = pd.DataFrame(columns=['ticker', 'qty', 'price', 'value', 'perc'],
-                                   data=[[p['ticker'], p['qty'], p['price'], p['qty'] * p['m'] * p['price'], p['qty'] * p['m'] * p['price'] / nav]])
-                if pos.empty:
-                    pos = tmp
-                else:
-                    pos = pd.concat([pos, tmp])
-        return pos
-
-    def get_position_d1(self, date: dt.datetime) -> pd.DataFrame:
+    def get_positions_d1(self, date: dt.datetime) -> pd.DataFrame:
         """
         Get all open positions for D-1 of a specific date.
 

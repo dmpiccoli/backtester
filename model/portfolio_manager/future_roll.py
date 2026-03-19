@@ -32,7 +32,7 @@ class FutureRoll(PortfolioManager):
     def next(self, date: dt.datetime):
         current_port = self.portfolio.get_data(date)
         nav = current_port.iat[0, current_port.columns.get_loc('NAV')]
-        current_pos = self.portfolio.get_position_d1(date)
+        current_pos = self.portfolio.get_positions_d1(date)
 
         ticker_buy = None
         ticker_sell = None
