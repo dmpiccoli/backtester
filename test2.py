@@ -22,6 +22,7 @@ if __name__ == '__main__':
 
     print(dt.datetime.now())
     pm.save()
+    pm.report()
     print(pm.portfolio.market_data)
     pass
     # p = portfolio.Portfolio('teste', begin_date=dt.datetime(2022, 5, 31))

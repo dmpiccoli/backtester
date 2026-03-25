@@ -87,6 +87,6 @@ class DataManager:
         for t in df['ticker'].drop_duplicates():
             tmp = df.loc[df['ticker'] == t].set_index('datetime', drop=True)
             r[t] = Future(ticker=t, calendar=CalendarType.B3, maturity=tmp['maturity'].values[-1],
-                          m=50.0, min_lot=1, cost_bps=1 / 10000, cost_unit=0.0, market_data=tmp, days2settle=1)
+                          m=50.0, min_lot=1, cost_bps=0.0, cost_unit=0.0, currency='BRL', market_data=tmp, days2settle=0)
 
         return r

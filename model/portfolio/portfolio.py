@@ -4,7 +4,7 @@ import math
 
 import pandas as pd
 from data.data_manager import DataManager
-from model.asset import Asset
+from model.asset import Asset, AssetType
 
 from utils.pcalendar import Calendar, CalendarType
 
@@ -21,18 +21,21 @@ class Portfolio(Asset):
     cash_index: str
     last_update: dt.datetime
 
-    def __init__(self, name: str, begin_date: dt.datetime, start_nav: float = 100000000.0,
-                 calendar_type: CalendarType = CalendarType.BR, cash_index: str = 'BZACCETP Index') -> None:
+    positions: dict[dt.datetime, dict[str, dict]]
+    trades: dict[dt.datetime, dict[str, list]]
+    cash: dict[dt.datetime, dict[str, float]]
 
-        self.ticker = name
-        self.calendar = Calendar(calendar_type)
+    def __init__(self, name: str, begin_date: dt.datetime, start_nav: float = 100000000.0,
+                 calendar: CalendarType = CalendarType.BR, cash_index: dict[str,str] = {'BRL':'BZACCETP Index'}) -> None:
+
+        super().__init__(ticker=name, asset_type=AssetType.fund, calendar=calendar)
+
         self.begin_date = self.calendar.workday(begin_date + dt.timedelta(days=-1), bd=1)
         self.start_nav = start_nav
         d_1 = self.calendar.workday(self.begin_date, -1)
         self.last_update = d_1
 
-        self.market_data = pd.DataFrame(data=[[start_nav, 0.0, 1.0, 0.0, 0.0]], index=[begin_date], columns=['NAV', 'cash', 'close', 'r', 'alpha'])
-        self.positions:dict[dt.datetime, dict[str, dict]] = {begin_date: {}, d_1: {}}
+        self.positions = {begin_date: {}, d_1: {}}
 
         self.positions[begin_date]['future'] : dict = {}
         self.positions[d_1]['future']: dict = {}
@@ -41,11 +44,14 @@ class Portfolio(Asset):
         self.positions[begin_date]['provision'] : dict = {}
         self.positions[d_1]['provision']: dict = {}
 
-        self.trades : dict[dt.datetime, dict[str, list]] = {begin_date: {}}
+        self.trades = {begin_date: {}}
         self.trades[begin_date]['future'] = []
 
         self.cash_index = cash_index
-        self.cash : dict[dt.datetime, float] = {begin_date: start_nav, d_1: 0.0}
+        self.cash = {begin_date: {self.currency: start_nav}, d_1: {self.currency: 0.0}}
+
+        self.market_data = pd.DataFrame(index=[begin_date], columns=['NAV', 'close', 'r', 'alpha'] + ['cash_' + c for c in self.cash[begin_date].keys()],
+                                             data=[[start_nav, 1.0, 0.0, 0.0] + [c for c in self.cash[begin_date].values()]])
 
     def get_data(self, date: dt.datetime) -> pd.DataFrame:
         """
@@ -72,17 +78,35 @@ class Portfolio(Asset):
             nav = self.market_data.loc[self.market_data.index < date]['NAV'].values[-1]
             d_1 = self.market_data.loc[self.market_data.index < date]['NAV'].index[-1]
         else:
-            return pd.DataFrame(columns=['ticker', 'qty', 'price', 'value', 'perc'])
+            return pd.DataFrame(columns=['datetime', 'ticker', 'asset', 'qty', 'price', 'value', 'perc'])
 
-        pos = pd.DataFrame(columns=['ticker', 'qty', 'price', 'value', 'perc'])
+        pos = pd.DataFrame(columns=['datetime', 'ticker', 'asset', 'qty', 'price', 'value', 'perc'])
         if d_1 in self.positions:
             for p in self.positions[d_1]['future'].values():
-                tmp = pd.DataFrame(columns=['ticker', 'qty', 'price', 'value', 'perc'],
-                                   data=[[p['ticker'], p['qty'], p['price'], p['qty'] * p['m'] * p['price'], p['qty'] * p['m'] * p['price'] / nav]])
+                tmp = pd.DataFrame(columns=['datetime', 'ticker', 'asset', 'qty', 'price', 'value', 'perc'],
+                                   data=[[d_1, p['ticker'], 'future', p['qty'], p['price'], p['qty'] * p['m'] * p['price'], p['qty'] * p['m'] * p['price'] / nav]])
                 if pos.empty:
                     pos = tmp
                 else:
                     pos = pd.concat([pos, tmp])
+        return pos
+
+    def get_positions(self, date: dt.datetime) -> pd.DataFrame:
+        """
+        Get all open positions for a specific dates.
+
+        Return empty dataframe if there is no positions
+        """
+        pos = pd.DataFrame(columns=['datetime', 'ticker', 'asset', 'asset', 'qty', 'price', 'value'])
+        if date in self.positions:
+            for p in self.positions[date]['future'].values():
+                tmp = pd.DataFrame(columns=['datetime', 'ticker', 'asset', 'qty', 'price', 'value'],
+                                   data=[[date, p['ticker'], 'future', p['qty'], p['price'], p['qty'] * p['m'] * p['price']]])
+                if pos.empty:
+                    pos = tmp
+                else:
+                    pos = pd.concat([pos, tmp])
+        pos = pos.set_index(keys='datetime', drop=True)
         return pos
 
     def get_positions(self) -> pd.DataFrame:
@@ -91,24 +115,76 @@ class Portfolio(Asset):
 
         Return empty dataframe if the date is not valid
         """
-        # if d_1 in self.market_data.index:
-        #     nav = self.market_data.loc[self.market_data.index == d_1]['NAV'].values[0]
-        # else:
-        #     return pd.DataFrame(columns=['ticker', 'qty', 'value', 'perc'])
-
-        pos = pd.DataFrame(columns=['datetime', 'ticker', 'qty', 'price', 'value'])
+        pos = pd.DataFrame(columns=['datetime', 'ticker', 'asset', 'qty', 'price', 'value'])
         for k1, p1 in self.positions.items():
             for p in self.positions[k1]['future'].values():
-                tmp = pd.DataFrame(columns=['datetime', 'ticker', 'qty', 'price', 'value'],
-                                   data=[[k1,p['ticker'], p['qty'], p['price'], p['qty'] * p['m'] * p['price']]])
+                tmp = pd.DataFrame(columns=['datetime', 'ticker', 'asset', 'qty', 'price', 'value'],
+                                   data=[[k1, p['ticker'], 'future', p['qty'], p['price'], p['qty'] * p['m'] * p['price']]])
                 if pos.empty:
                     pos = tmp
                 else:
                     pos = pd.concat([pos, tmp])
-
-        pos = pos.set_index(keys='datetime', drop=True)
-        pos = pos.merge(self.market_data[['NAV']], how='left', left_index=True, right_index=True)
+        if not pos.empty:
+            pos = pos.set_index(keys='datetime', drop=True)
         return pos
+
+    def get_trades(self) -> pd.DataFrame:
+        """
+        Get all trades for all dates.
+
+        Return empty dataframe if there are no trades
+        """
+        trades = pd.DataFrame(columns=['datetime', 'ticker', 'asset', 'qty', 'price'])
+        for k1, t1 in self.trades.items():
+            for t in self.trades[k1]['future']:
+                tmp = pd.DataFrame(columns=['datetime', 'ticker', 'asset', 'qty', 'price'],
+                                   data=[[k1, t['ticker'], 'future', t['qty'], 'Settle' if math.isnan(t['price']) else t['price']]])
+                if trades.empty:
+                    trades = tmp
+                else:
+                    trades = pd.concat([trades, tmp])
+
+        if not trades.empty:
+            trades = trades.set_index(keys='datetime', drop=True)
+        return trades
+
+    def get_provisions(self) -> pd.DataFrame:
+        """
+        Get all open provisions for all dates.
+
+        Return empty dataframe if the date is not valid
+        """
+        pos = pd.DataFrame(columns=['datetime', 'ticker', 'asset', 'qty', 'price', 'value'])
+        for k1, p1 in self.positions.items():
+            for p in self.positions[k1]['provision'].values():
+                tmp = pd.DataFrame(columns=['datetime', 'ticker', 'asset', 'qty', 'price', 'value'],
+                                   data=[[k1, p['ticker'], 'provision', p['qty'], p['price'], p['qty'] * p['m'] * p['price']]])
+                if pos.empty:
+                    pos = tmp
+                else:
+                    pos = pd.concat([pos, tmp])
+        if not pos.empty:
+            pos = pos.set_index(keys='datetime', drop=True)
+        return pos
+
+    def get_cash(self):
+        """
+        Get cash positions for all dates.
+
+        Return empty dataframe if there are no cash positions
+        """
+        cash = pd.DataFrame(columns=['datetime', 'currency', 'asset', 'value'])
+        for k1, c1 in self.cash.items():
+            for k2, c2 in self.cash[k1]:
+                tmp = pd.DataFrame(columns=['datetime', 'currency', 'asset', 'value'],
+                                   data=[[k1, k2, 'cash', c2]])
+                if cash.empty:
+                    cash = tmp
+                else:
+                    cash = pd.concat([cash, tmp])
+        if not cash.empty:
+            cash = cash.set_index(keys='datetime', drop=True)
+        return cash
 
     def add_order_future(self, date: dt.datetime, ticker: str, qty: int, price: float = np.nan):
         #load metadata
@@ -139,8 +215,6 @@ class Portfolio(Asset):
 
             # get last nav
             if process_date == self.begin_date:
-                # self.market_data = pd.DataFrame(data=[[self.start_nav, 0.0, 1.0, 0.0, 0.0]],
-                #                                 index=[self.begin_date], columns=['NAV', 'cash', 'close', 'r', 'alpha'])
                 last_nav = self.start_nav
             else:
                 last_nav = self.market_data.loc[self.market_data.index == self.last_update, 'NAV'].values[0]
@@ -149,94 +223,129 @@ class Portfolio(Asset):
             self.positions[process_date] = {}
             self.positions[process_date]['future'] = {}
             self.positions[process_date]['provision'] = {}
-            self.cash[process_date] = last_nav if process_date == self.begin_date else self.cash[max(self.cash.keys())]
+            self.cash[process_date] = { self.currency: last_nav if process_date == self.begin_date else self.cash[max(self.cash.keys())][self.currency] }
 
-            #totals
-            total_pnl = 0.0
-            total_cost_bps = 0.0
-            total_cost_unit = 0.0
             try:
                 ######################################## FUTURES ########################################
                 #copy D-1 positions to new date
                 for p in self.positions[self.last_update]['future'].values():
                     if p['qty'] != 0:
-                        new_pos = {'ticker': p['ticker'], 'qty': p['qty'], 'price': 0.0, 'm': p['m'], 'pnl': 0.0}
+                        # Load instrument data
                         fut = DataManager().load(ticker=p['ticker'])[p['ticker']]
-                        new_pos['price'] = fut.get_close(date=process_date)
+                        # Convert P&L if quote currency is different from settlement currency
+                        if fut.settlement_currency != fut.settlement_currency:
+                            c = DataManager().load(ticker=fut.currency + fut.settlement_currency)[fut.currency + fut.settlement_currency]
+                            c = c.get_close(date=process_date)
+                        else:
+                            c = 1.0
+
+                        # create new position
+                        new_pos = {'ticker': p['ticker'], 'currency': p['currency'], 'settlement_currency': p['settlement_currency'], 'qty': p['qty'],
+                                   'price': fut.get_close(date=process_date), 'm': p['m'], 'pnl': 0.0, 'c': c}
+
                         # Repeat price if it's nan
                         if math.isnan(new_pos['price']):
                             new_pos['price'] = p['price']
-                        new_pos['pnl'] = new_pos['pnl'] + new_pos['qty'] * (new_pos['price'] - p['price']) * new_pos['m']
-                        self.positions[process_date]['future'][new_pos['ticker']] = new_pos
-                        total_pnl += new_pos['pnl']
 
-                        # update provisions if it's different then 0
+                        new_pos['pnl'] = new_pos['pnl'] + (new_pos['qty'] * (new_pos['price'] - p['price']) * new_pos['m']) * new_pos['c']
+                        self.positions[process_date]['future'][new_pos['ticker']] = new_pos
+
+                        # Update provisions if it's different then 0
                         if new_pos['pnl'] != 0.0:
-                            new_prov = {'ticker': new_pos['ticker'], 'maturity': fut.calendar.workday(process_date, fut.days2settle), 'value': new_pos['pnl']}
+                            new_prov = {'ticker': new_pos['ticker'], 'maturity': fut.calendar.workday(process_date, fut.days2settle),
+                                        'currency':fut.settlement_currency, 'value': new_pos['pnl'], 'c':c}
                             self.positions[process_date]['provision'][new_prov['ticker']] = new_prov
 
                 #process trades
                 if process_date in self.trades:
                     for t in self.trades[process_date]['future']:
-                        #get metadata / last price for ticker
+                        # Get metadata / last price for ticker
                         fut = DataManager().load(ticker=t['ticker'])[t['ticker']]
 
+                        # Get currency to convert P&L if quote currency is different from settlement currency
+                        if fut.settlement_currency != fut.settlement_currency:
+                            c = DataManager().load(ticker=fut.currency + fut.settlement_currency)[fut.currency + fut.settlement_currency]
+                            c = c.get_close(date=process_date)
+                        else:
+                            c = 1.0
+
+                        # Check if already have a position
                         if t['ticker'] in self.positions[process_date]['future']:
                             new_pos = self.positions[process_date]['future'][t['ticker']]
                         else:
-                            new_pos = {'ticker': t['ticker'], 'qty': 0, 'price': fut.get_close(date=process_date), 'm': fut.m, 'pnl': 0.0}
+                            new_pos = {'ticker': t['ticker'], 'currency': fut.currency, 'settlement_currency': fut.settlement_currency,
+                                       'qty': 0, 'price': fut.get_close(date=process_date), 'm': fut.m, 'pnl': 0.0, 'c': c}
 
-                        #update qty
+                        # update qty
                         new_pos['qty'] = new_pos['qty'] + t['qty']
-                        #update dictionary of positions
+                        # update dictionary of positions
                         self.positions[process_date]['future'][new_pos['ticker']] = new_pos
-                        #Pnl and cost updates
-                        cost_bps = abs(t['qty']) * new_pos['m'] * (new_pos['price'] if math.isnan(t['price']) else t['price']) * fut.cost_bps
-                        cost_unit = abs(t['qty']) * new_pos['m'] * (new_pos['price'] if math.isnan(t['price']) else t['price']) * fut.cost_unit
-                        pnl = 0.0 if math.isnan(t['price']) else (new_pos['price'] - t['price']) * t['qty'] * new_pos['m']
-                        new_pos['pnl'] = new_pos['pnl'] + pnl - cost_bps - cost_unit
-
-                        total_pnl += pnl - cost_bps - cost_unit
-                        total_cost_bps += cost_bps
-                        total_cost_unit += cost_unit
+                        # Pnl and cost updates (if price is nan then trade at settle)
+                        cost_bps = abs(t['qty']) * new_pos['m'] * (new_pos['price'] if math.isnan(t['price']) else t['price']) * fut.cost_bps * new_pos['c']
+                        cost_unit = abs(t['qty']) * new_pos['m'] * (new_pos['price'] if math.isnan(t['price']) else t['price']) * fut.cost_unit * new_pos['c']
+                        pnl = 0.0 if math.isnan(t['price']) else (new_pos['price'] - t['price']) * t['qty'] * new_pos['m'] * new_pos['c']
+                        new_pos['pnl'] = new_pos['pnl'] + (pnl - cost_bps - cost_unit) * new_pos['c']
 
                         # update provisions
                         if new_pos['pnl'] != 0.0:
                             if t['ticker'] in self.positions[process_date]['provision']:
                                 new_prov = self.positions[process_date]['provision'][t['ticker']]
                             else:
-                                new_prov = {'ticker': new_pos['ticker'], 'maturity': self.calendar.workday(process_date, fut.days2settle), 'value': 0.0}
+                                new_prov = {'ticker': new_pos['ticker'], 'maturity': self.calendar.workday(process_date, fut.days2settle),
+                                            'currency': fut.settlement_currency, 'value': 0.0, 'c': new_pos['c']}
                             new_prov['value'] = new_prov['value'] + pnl - cost_bps - cost_unit
                             self.positions[process_date]['provision'][new_prov['ticker']] = new_prov
 
-                # process yesterday cash
+                # process yesterday provisions
                 for k in list(self.positions[self.last_update]['provision']):
                     if self.positions[self.last_update]['provision'][k]['maturity'] == process_date:
-                        self.cash[process_date] = self.cash[process_date] + self.positions[self.last_update]['provision'][k]['value']
+                        curr_prov = self.positions[self.last_update]['provision'][k]['currency']
+                        self.cash[process_date][curr_prov] += self.positions[self.last_update]['provision'][k]['value']
                     else:
-                        new_prov = {'ticker': self.positions[self.last_update]['provision'][k]['ticker'], 'maturity': self.positions[self.last_update]['provision'][k]['maturity'], 'value': self.positions[self.last_update]['provision'][k]['value']}
+                        new_prov = {'ticker': self.positions[self.last_update]['provision'][k]['ticker'],
+                                    'maturity': self.positions[self.last_update]['provision'][k]['maturity'],
+                                    'currency': self.positions[self.last_update]['provision'][k]['currency'],
+                                    'value': self.positions[self.last_update]['provision'][k]['value']}
                         self.positions[process_date]['provision'][self.positions[self.last_update]['provision'][k]['ticker']] = new_prov
 
-                # process today cash
+                # process today provisions
                 for k in list(self.positions[process_date]['provision']):
                     if self.positions[process_date]['provision'][k]['maturity'] == process_date:
-                        self.cash[process_date] = self.cash[process_date] + self.positions[end]['provision'][k]['value']
+                        curr_prov = self.positions[process_date]['provision'][k]['currency']
+                        self.cash[process_date][curr_prov] += self.positions[end]['provision'][k]['value']
                         del self.positions[process_date]['provision'][k]
                     elif self.positions[process_date]['provision'][k]['value'] == 0.0:
                         del self.positions[process_date]['provision'][k]
 
                 #update cash return
-                c = DataManager().load(self.cash_index)[self.cash_index]
-                total_pnl += self.cash[self.last_update] * (c.get_close(process_date) / c.get_close(self.last_update) - 1)
-                self.cash[process_date] = self.cash[process_date] + self.cash[self.last_update] * (c.get_close(process_date) / c.get_close(self.last_update) - 1)
+                for k, i in self.cash[process_date].items():
+                    q = DataManager().load(self.cash_index[k])[self.cash_index[k]]
+                    self.cash[process_date][k] = self.cash[process_date][k] + self.cash[self.last_update][k] * (q.get_close(process_date) / q.get_close(self.last_update) - 1)
 
                 # update values of portfolio
+                total_nav = 0.0
+                for k, p in self.positions[process_date].items():
+                    if k != 'future':
+                        for i in p:
+                            total_nav += i['value']
+                for k, p in self.cash[process_date].items():
+                    # Convert P&L if settlement currency is different from portfolio currency
+                    if k != self.currency:
+                        c = DataManager().load(ticker=k + self.currency)[k + self.currency]
+                        c = c.get_close(date=process_date)
+                    else:
+                        c = 1.0
+                    total_nav += p * c
 
-                self.market_data = pd.concat([self.market_data, pd.DataFrame(
-                    data=[[last_nav + total_pnl, self.cash[process_date], 1.0, 0.0,
-                           total_pnl / last_nav - (c.get_close(process_date) / c.get_close(self.last_update) - 1)]],
-                    index=[process_date],
-                    columns=['NAV', 'cash', 'close', 'r', 'alpha'])])
+
+                q = DataManager().load(self.cash_index[self.currency])[self.cash_index[self.currency]]
+                self.market_data = pd.concat([self.market_data,
+                                              pd.DataFrame(index=[process_date], columns=['NAV', 'close', 'r', 'alpha'] + ['cash_' + c for c in self.cash[process_date].keys()],
+                                             data=[[total_nav, 1.0, 0.0,
+                                                    total_nav / last_nav - q.get_close(process_date) / q.get_close(max(self.last_update, self.begin_date))] +
+                                                                 [c for c in self.cash[process_date].values()]])])
+
+
 
                 # update NAV and NAVPS
                 self.market_data['close'] = self.market_data['NAV'] / self.market_data.iloc[0]['NAV']

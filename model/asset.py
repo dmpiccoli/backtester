@@ -32,10 +32,13 @@ class Asset(ABC):
     days2settle: int
     cost_bps: float
     cost_unit: float
+    currency: str
+    settlement_currency: str
     market_data: pd.DataFrame
 
     def __init__(self, ticker: str, asset_type: AssetType, calendar: CalendarType = CalendarType.NOCAL, m: float = 1.0, min_lot: int = 1,
-                 days2settle: int = 0, cost_bps: float = 0.0, cost_unit: float = 0.0, market_data: pd.DataFrame = None, **kwargs) -> None:
+                 days2settle: int = 0, cost_bps: float = 0.0, cost_unit: float = 0.0, currency: str = 'BRL', settlement_currency:str = None,
+                 market_data: pd.DataFrame = None, **kwargs) -> None:
 
         self.ticker = ticker
         self.asset_type = asset_type
@@ -45,6 +48,11 @@ class Asset(ABC):
         self.days2settle = days2settle
         self.cost_bps = cost_bps
         self.cost_unit = cost_unit
+        self.currency = currency
+        if settlement_currency is None:
+            self.settlement_currency = self.currency
+        else:
+            self.settlement_currency = settlement_currency
         self.market_data = market_data
 
         if 'metadata' in kwargs:

@@ -33,7 +33,7 @@ class PortfolioManager(ABC):
         self.calendar = Calendar(trade_calendar)
         self.first_trade = self.calendar.workday(first_trade + dt.timedelta(days=1), -1)
         if portfolio is None:
-            self.portfolio = Portfolio(name=name, begin_date=first_trade, calendar_type=portfolio_calendar)
+            self.portfolio = Portfolio(name=name, begin_date=first_trade, calendar=portfolio_calendar)
         else:
             self.portfolio = portfolio
 
@@ -96,3 +96,9 @@ class PortfolioManager(ABC):
     def report(self) -> None:
         qs.reports.html(returns=self.portfolio.market_data.alpha, output=const.MODEL_PATH + self.name + '.html',
                         download_filename=const.MODEL_PATH + self.name + '.html')
+
+        excel_writer = pd.ExcelWriter(const.MODEL_PATH + self.name + '.xlsx')
+        self.portfolio.get_positions().to_excel(excel_writer=excel_writer, sheet_name='positions')
+        self.portfolio.market_data.to_excel(excel_writer=excel_writer, sheet_name='data')
+        self.portfolio.get_trades().to_excel(excel_writer=excel_writer, sheet_name='trades')
+        excel_writer.close()
