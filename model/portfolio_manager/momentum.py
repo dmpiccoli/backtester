@@ -40,7 +40,7 @@ class Momentum(PortfolioManager):
     def next(self, date: dt.datetime):
         if date in self.data.index:
             ticker = self.data.loc[self.data.index == date]['ticker'].values[0]
-            fut = DataManager().load(ticker)[ticker]
+            q = DataManager().load(ticker)[ticker]
             signal = self.data.loc[self.data.index == date]['signal'].values[0]
             pct_size = self.data.loc[self.data.index == date]['size'].values[0]
             price = self.data.loc[self.data.index == date]['close'].values[0]
@@ -51,8 +51,8 @@ class Momentum(PortfolioManager):
 
             #First date
             if current_pos.empty:
-                self.portfolio.add_order_future(date=date, ticker=ticker, qty=pct_size * nav / price / fut.m)
+                self.portfolio.add_order_equity(date=date, ticker=ticker, qty=pct_size * nav / price / q.m)
             else:
                 qty = current_pos.loc[current_pos.ticker == ticker]['qty'][0]
-                self.portfolio.add_order_future(date=date, ticker=ticker, qty=pct_size * nav / price / fut.m - qty)
+                self.portfolio.add_order_equity(date=date, ticker=ticker, qty=pct_size * nav / price / q.m - qty)
         pass

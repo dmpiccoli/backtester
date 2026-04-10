@@ -7,8 +7,12 @@ import datetime as dt
 import arcticdb as adb
 
 from model.asset import Asset
-from utils.pcalendar import CalendarType, Calendar
+from model.equity import Equity
 from model.future import Future
+from model.index import Index
+from utils.pcalendar import CalendarType, Calendar
+
+
 
 from core import const
 
@@ -42,6 +46,28 @@ class DataManager:
         for t in ticker:
             if t[:2] == 'UC':
                 r[t] = self.load_uc()[t]
+            elif t == 'SPY US Equity':
+                lib_data = lib.read(t)
+                df = lib_data.data
+                meta_data = lib_data.metadata
+                df['ticker'] = t
+                e = Equity(ticker=t, calendar=CalendarType.US, cost_bps=0.0, currency='USD',
+                           cost_unit=0.005, market_data=df, days2settle=1, metadata=meta_data)
+                r[t] = e
+            elif t == 'BZACCETP Index':
+                lib_data = lib.read(t)
+                df = lib_data.data
+                meta_data = lib_data.metadata
+                df['ticker'] = t
+                e = Index(ticker=t, calendar=CalendarType.US, currency='BRL', market_data=df, metadata=meta_data)
+                r[t] = e
+            elif t == 'LD20TRUU Index':
+                lib_data = lib.read(t)
+                df = lib_data.data
+                meta_data = lib_data.metadata
+                df['ticker'] = t
+                e = Index(ticker=t, calendar=CalendarType.US, currency='USD', market_data=df, metadata=meta_data)
+                r[t] = e
             else:
                 lib_data = lib.read(t)
                 df = lib_data.data

@@ -76,10 +76,10 @@ class PortfolioManager(ABC):
             raise e
 
     @staticmethod
-    def load(name) -> PortfolioManager:
+    def load(name: str) -> PortfolioManager:
         """
         Load portfolio manager and portfolio state
-        :return:
+        :return: Portfolio manager object
         """
         try:
             if os.path.exists(const.MODEL_PATH + name + '.pkl'):

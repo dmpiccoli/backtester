@@ -45,4 +45,4 @@ class Future(Asset):
         if date > self.maturity:
             return 0.0
         else:
-            return self.market_data[self.market_data.index <= date]['close'].values[-1]
+            return self.market_data[self.market_data.index <= date].iat[-1, self.market_data.columns.get_loc('close')].item()

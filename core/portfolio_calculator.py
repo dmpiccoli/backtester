@@ -44,6 +44,7 @@ class PortfolioCalculator:
 
         no_calendar = Calendar(CalendarType.NOCAL)
         if run_all:
+            #self.portfolio.reset()
             current_date = self.portfolio.begin_date
         else:
             current_date = self.portfolio.last_update

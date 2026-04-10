@@ -12,6 +12,7 @@ class AssetType(enum.Enum):
     provision = 1
     fund = 2
     index = 3
+    equity = 4
 
 
 class Asset(ABC):
@@ -63,4 +64,4 @@ class Asset(ABC):
                     setattr(self, k, i)
 
     def get_field(self, date: dt.datetime, field: str):
-        return self.market_data[self.market_data.index == date][field]
+        return self.market_data[self.market_data.index == date][field].item()
