@@ -50,18 +50,18 @@ class Asset(ABC):
         self.cost_bps = cost_bps
         self.cost_unit = cost_unit
         self.currency = currency
-        if settlement_currency is None:
-            self.settlement_currency = self.currency
-        else:
-            self.settlement_currency = settlement_currency
         self.market_data = market_data
 
         if 'metadata' in kwargs:
             meta_data = kwargs['metadata']
-
             for k, i in meta_data.items():
                 if hasattr(self, k):
                     setattr(self, k, i)
+
+        if settlement_currency is None:
+            self.settlement_currency = self.currency
+        else:
+            self.settlement_currency = settlement_currency
 
     def get_field(self, date: dt.datetime, field: str):
         return self.market_data[self.market_data.index == date][field].item()
