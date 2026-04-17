@@ -28,6 +28,49 @@ class DataManager:
         pass
 
     @cache
+    def _load(self, ticker):
+        r = {}
+
+        ac = adb.Arctic(const.ARTCIC_DB)
+        lib = ac.get_library(const.LIBRARY_DATA)
+
+        if ticker[:2] == 'UC':
+            r[ticker] = self.load_uc()[ticker]
+        elif ticker == 'SPY US Equity':
+            lib_data = lib.read(ticker)
+            df = lib_data.data
+            meta_data = lib_data.metadata
+            df['ticker'] = ticker
+            e = Equity(ticker=t, calendar=CalendarType.US, cost_bps=0.0, currency='USD',
+                       cost_unit=0.005, market_data=df, days2settle=1, metadata=meta_data)
+            r[ticker] = e
+        elif ticker == 'BZACCETP Index':
+            lib_data = lib.read(ticker)
+            df = lib_data.data
+            meta_data = lib_data.metadata
+            df['ticker'] = ticker
+            e = Index(ticker=ticker, calendar=CalendarType.US, currency='BRL', market_data=df, metadata=meta_data)
+            r[ticker] = e
+        elif ticker == 'LD20TRUU Index':
+            lib_data = lib.read(ticker)
+            df = lib_data.data
+            meta_data = lib_data.metadata
+            df['ticker'] = ticker
+            e = Index(ticker=ticker, calendar=CalendarType.US, currency='USD', market_data=df, metadata=meta_data)
+            r[ticker] = e
+        else:
+            lib_data = lib.read(ticker)
+            df = lib_data.data
+            meta_data = lib_data.metadata
+            df['ticker'] = ticker
+            f = Future(ticker=ticker, calendar=CalendarType.B3, maturity=dt.datetime.max, cost_bps=1 / 10000,
+                       cost_unit=0.0, market_data=df, days2settle=1, metadata=meta_data)
+            r[ticker] = f
+
+        lib = None
+        ac = None
+        return r
+
     def load(self, ticker: Union[list, str], begin: dt.datetime = None, end: dt.datetime = None) -> dict[str, Asset]:
         """
         Load data from database
@@ -39,47 +82,9 @@ class DataManager:
         if type(ticker) is str:
             ticker = [ticker]
 
-        ac = adb.Arctic(const.ARTCIC_DB)
-        lib = ac.get_library(const.LIBRARY_DATA)
-
         r = {}
         for t in ticker:
-            if t[:2] == 'UC':
-                r[t] = self.load_uc()[t]
-            elif t == 'SPY US Equity':
-                lib_data = lib.read(t)
-                df = lib_data.data
-                meta_data = lib_data.metadata
-                df['ticker'] = t
-                e = Equity(ticker=t, calendar=CalendarType.US, cost_bps=0.0, currency='USD',
-                           cost_unit=0.005, market_data=df, days2settle=1, metadata=meta_data)
-                r[t] = e
-            elif t == 'BZACCETP Index':
-                lib_data = lib.read(t)
-                df = lib_data.data
-                meta_data = lib_data.metadata
-                df['ticker'] = t
-                e = Index(ticker=t, calendar=CalendarType.US, currency='BRL', market_data=df, metadata=meta_data)
-                r[t] = e
-            elif t == 'LD20TRUU Index':
-                lib_data = lib.read(t)
-                df = lib_data.data
-                meta_data = lib_data.metadata
-                df['ticker'] = t
-                e = Index(ticker=t, calendar=CalendarType.US, currency='USD', market_data=df, metadata=meta_data)
-                r[t] = e
-            else:
-                lib_data = lib.read(t)
-                df = lib_data.data
-                meta_data = lib_data.metadata
-                df['ticker'] = t
-                f = Future(ticker=t, calendar=CalendarType.B3, maturity=dt.datetime.max, cost_bps=1 / 10000,
-                           cost_unit=0.0, market_data=df, days2settle=1, metadata=meta_data)
-                r[t] = f
-
-        lib = None
-        ac = None
-
+            r[t] = self._load(t)
         return r
 
     @cache
