@@ -16,7 +16,7 @@ class FutureRoll(PortfolioManager):
         super().__init__(name, first_trade, trade_calendar, portfolio_calendar, portfolio)
         pass
 
-    def load_data(self, update=False):
+    def load_data(self, ticker:str, update=False):
         uc = DataManager().load_uc()
         df = pd.DataFrame()
         for k, f in uc.items():
