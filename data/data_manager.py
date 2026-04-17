@@ -63,7 +63,7 @@ class DataManager:
             df = lib_data.data
             meta_data = lib_data.metadata
             df['ticker'] = ticker
-            if ticker[-9:-6] == 'US':
+            if ticker[-9:-7] == 'US':
                 f = Equity(ticker=ticker, calendar=CalendarType.US, maturity=dt.datetime.max, cost_bps=0.0,
                        cost_unit=0.005, market_data=df, days2settle=1, metadata=meta_data)
             else:
