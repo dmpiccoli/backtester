@@ -35,49 +35,44 @@ class DataManager:
         lib = ac.get_library(const.LIBRARY_DATA)
 
         if ticker[:2] == 'UC':
-            r[ticker] = self.load_uc()[ticker]
+            r = self.load_uc()[ticker]
         elif ticker == 'SPY US Equity':
             lib_data = lib.read(ticker)
             df = lib_data.data
             meta_data = lib_data.metadata
             df['ticker'] = ticker
-            e = Equity(ticker=t, calendar=CalendarType.US, cost_bps=0.0, currency='USD',
+            r = Equity(ticker=t, calendar=CalendarType.US, cost_bps=0.0, currency='USD',
                        cost_unit=0.005, market_data=df, days2settle=1, metadata=meta_data)
-            r[ticker] = e
         elif ticker == 'BZACCETP Index':
             lib_data = lib.read(ticker)
             df = lib_data.data
             meta_data = lib_data.metadata
             df['ticker'] = ticker
-            e = Index(ticker=ticker, calendar=CalendarType.US, currency='BRL', market_data=df, metadata=meta_data)
-            r[ticker] = e
+            r = Index(ticker=ticker, calendar=CalendarType.US, currency='BRL', market_data=df, metadata=meta_data)
         elif ticker == 'LD20TRUU Index':
             lib_data = lib.read(ticker)
             df = lib_data.data
             meta_data = lib_data.metadata
             df['ticker'] = ticker
-            e = Index(ticker=ticker, calendar=CalendarType.US, currency='USD', market_data=df, metadata=meta_data)
-            r[ticker] = e
+            r = Index(ticker=ticker, calendar=CalendarType.US, currency='USD', market_data=df, metadata=meta_data)
         elif ticker[-6:] == 'Equity':
             lib_data = lib.read(ticker)
             df = lib_data.data
             meta_data = lib_data.metadata
             df['ticker'] = ticker
             if ticker[-9:-7] == 'US':
-                f = Equity(ticker=ticker, calendar=CalendarType.US, maturity=dt.datetime.max, cost_bps=0.0,
+                r = Equity(ticker=ticker, calendar=CalendarType.US, maturity=dt.datetime.max, cost_bps=0.0,
                        cost_unit=0.005, market_data=df, days2settle=1, metadata=meta_data)
             else:
-                f = Equity(ticker=ticker, calendar=CalendarType.B3, maturity=dt.datetime.max, cost_bps=0.0,
-                           cost_unit=0.005, market_data=df, days2settle=1, metadata=meta_data)
-            r[ticker] = f
+                r = Equity(ticker=ticker, calendar=CalendarType.B3, maturity=dt.datetime.max, cost_bps=1.0,
+                           cost_unit=0.0, market_data=df, days2settle=1, metadata=meta_data)
         else:
             lib_data = lib.read(ticker)
             df = lib_data.data
             meta_data = lib_data.metadata
             df['ticker'] = ticker
-            f = Future(ticker=ticker, calendar=CalendarType.B3, maturity=dt.datetime.max, cost_bps=1 / 10000,
+            r = Future(ticker=ticker, calendar=CalendarType.B3, maturity=dt.datetime.max, cost_bps=1 / 10000,
                        cost_unit=0.0, market_data=df, days2settle=1, metadata=meta_data)
-            r[ticker] = f
 
         lib = None
         ac = None
