@@ -54,7 +54,7 @@ class Portfolio(Asset):
         self.market_data = pd.DataFrame(index=[begin_date], columns=['NAV', 'close', 'r', 'alpha'] + ['cash_' + c for c in self.cash[begin_date].keys()],
                                              data=[[start_nav, 1.0, 0.0, 0.0] + [c for c in self.cash[begin_date].values()]])
 
-    def get_data(self, date: dt.datetime) -> pd.DataFrame:
+    def get_data_by_date(self, date: dt.datetime) -> pd.DataFrame:
         """
         Get portfolio data for a specific date.
         
@@ -68,6 +68,17 @@ class Portfolio(Asset):
                 return self.market_data.loc[self.market_data.index == d_1]
             else:
                 return pd.DataFrame(columns=['NAV', 'cash', 'close', 'r', 'alpha'])
+
+    def get_data(self, date: dt.datetime = None) -> pd.DataFrame:
+        """
+        Get portfolio data for a specific date or return all data.
+
+        Return portfolio data
+        """
+        if date is None:
+            return self.market_data
+        else:
+            return self.market_data.loc[self.market_data.index <= date]
 
     def get_positions_d1(self, date: dt.datetime) -> pd.DataFrame:
         """
@@ -245,6 +256,40 @@ class Portfolio(Asset):
             self.trades[date]['equity'] = []
         self.trades[date]['equity'].append({'date': date, 'ticker': ticker, 'qty': qty, 'price': price})
 
+    def add_order_equity_perc(self, date: dt.datetime, ticker: str, perc: float):
+        # load metadata
+        eq = DataManager().load(ticker)[ticker]
+        if eq.currency != self.currency:
+            c = DataManager().load(ticker=eq.currency + self.currency + ' Curncy')[eq.currency + self.currency + ' Curncy']
+            c = c.get_close(date=date)
+        else:
+            c = 1.0
+        p = eq.get_close(date=date)
+
+        #get current nav
+        nav = self.get_data()
+        nav = nav.loc[nav.index < date, 'NAV'] #get D-1
+        if nav.empty:
+            nav = self.start_nav
+        else:
+            nav = nav.values[-1]
+        # get current position
+        current_pos = self.get_positions_d1(date)
+        if current_pos.empty:
+            old_qty = 0
+        else:
+            current_pos = current_pos.loc[current_pos['ticker'] == ticker]
+            if current_pos.empty:
+                old_qty = 0
+            else:
+                old_qty = current_pos['qty'].values[0]
+        # min lot adjustment
+        qty = math.trunc(nav * perc / p / c / eq.min_lot) * eq.min_lot
+        if date not in self.trades:
+            self.trades[date] = {}
+            self.trades[date]['equity'] = []
+        self.trades[date]['equity'].append({'date': date, 'ticker': ticker, 'qty': qty - old_qty, 'price': np.nan})
+
     def process(self, end: dt.datetime) -> bool:
         if end < self.begin_date:
             return False
@@ -282,7 +327,7 @@ class Portfolio(Asset):
                         fut = DataManager().load(ticker=p['ticker'])[p['ticker']]
                         # Convert P&L if quote currency is different from settlement currency
                         if fut.settlement_currency != fut.settlement_currency:
-                            c = DataManager().load(ticker=fut.currency + fut.settlement_currency)[fut.currency + fut.settlement_currency]
+                            c = DataManager().load(ticker=fut.currency + fut.settlement_currency + ' Curncy')[fut.currency + fut.settlement_currency + ' Curncy']
                             c = c.get_close(date=process_date)
                         else:
                             c = 1.0
@@ -312,7 +357,7 @@ class Portfolio(Asset):
 
                         # Get currency to convert P&L if quote currency is different from settlement currency
                         if fut.settlement_currency != fut.settlement_currency:
-                            c = DataManager().load(ticker=fut.currency + fut.settlement_currency)[fut.currency + fut.settlement_currency]
+                            c = DataManager().load(ticker=fut.currency + fut.settlement_currency + ' Curncy')[fut.currency + fut.settlement_currency + ' Curncy']
                             c = c.get_close(date=process_date)
                         else:
                             c = 1.0
@@ -345,6 +390,9 @@ class Portfolio(Asset):
                             self.positions[process_date]['provision'][new_prov['ticker']] = new_prov
                 # endregion Futures
                 # region Equities
+
+                # TODO process events
+
                 # copy D-1 positions to new date
                 for p in self.positions[self.last_update]['equity'].values():
                     if p['qty'] != 0:
@@ -352,7 +400,7 @@ class Portfolio(Asset):
                         eq = DataManager().load(ticker=p['ticker'])[p['ticker']]
                         # Convert P&L if quote currency is different from settlement currency
                         if eq.settlement_currency != eq.settlement_currency:
-                            c = DataManager().load(ticker=eq.currency + eq.settlement_currency)[eq.currency + eq.settlement_currency]
+                            c = DataManager().load(ticker=eq.currency + eq.settlement_currency + ' Curncy')[eq.currency + eq.settlement_currency + ' Curncy']
                             c = c.get_close(date=process_date)
                         else:
                             c = 1.0
@@ -376,7 +424,7 @@ class Portfolio(Asset):
 
                         # Get currency to convert P&L if quote currency is different from settlement currency
                         if eq.settlement_currency != eq.settlement_currency:
-                            c = DataManager().load(ticker=eq.currency + eq.settlement_currency)[eq.currency + eq.settlement_currency]
+                            c = DataManager().load(ticker=eq.currency + eq.settlement_currency + ' Curncy')[eq.currency + eq.settlement_currency + ' Curncy']
                             c = c.get_close(date=process_date)
                         else:
                             c = 1.0
@@ -443,7 +491,7 @@ class Portfolio(Asset):
                         for i in p.values():
                             # Convert P&L if settlement currency is different from portfolio currency
                             if i['settlement_currency'] != self.currency:
-                                c = DataManager().load(ticker=i['settlement_currency'] + self.currency)[i['settlement_currency'] + self.currency]
+                                c = DataManager().load(ticker=i['settlement_currency'] + self.currency + ' Curncy')[i['settlement_currency'] + self.currency + ' Curncy']
                                 c = c.get_close(date=process_date)
                             else:
                                 c = 1.0
@@ -452,7 +500,7 @@ class Portfolio(Asset):
                         for i in p.values():
                             # Convert P&L if settlement currency is different from portfolio currency
                             if i['currency'] != self.currency:
-                                c = DataManager().load(ticker=i['currency'] + self.currency)[i['currency'] + self.currency]
+                                c = DataManager().load(ticker=i['currency'] + self.currency + ' Curncy')[i['currency'] + self.currency + ' Curncy']
                                 c = c.get_close(date=process_date)
                             else:
                                 c = 1.0
@@ -460,7 +508,7 @@ class Portfolio(Asset):
                 for k, p in self.cash[process_date].items():
                     # Convert P&L if settlement currency is different from portfolio currency
                     if k != self.currency:
-                        c = DataManager().load(ticker=k + self.currency)[k + self.currency]
+                        c = DataManager().load(ticker=k + self.currency + ' Curncy')[k + self.currency + ' Curncy']
                         c = c.get_close(date=process_date)
                     else:
                         c = 1.0
@@ -478,6 +526,7 @@ class Portfolio(Asset):
                 self.market_data['r'] = self.market_data['close'].pct_change().fillna(0)
 
                 self.last_update = process_date
+                # print('Processed: ' + process_date.strftime('%Y-%m-%d'))
                 process_date = self.calendar.workday(date=self.last_update, bd=1)
             except Exception as e:
                 raise(e)
