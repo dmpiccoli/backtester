@@ -45,7 +45,7 @@ class Momentum(PortfolioManager):
             pct_size = self.data.loc[self.data.index == date]['size'].values[0]
             price = self.data.loc[self.data.index == date]['close'].values[0]
 
-            current_port = self.portfolio.get_data(date)
+            current_port = self.portfolio.get_data_by_date(date)
             nav = current_port.iat[0, current_port.columns.get_loc('NAV')]
             current_pos = self.portfolio.get_positions_d1(date)
 
