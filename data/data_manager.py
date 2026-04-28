@@ -36,13 +36,6 @@ class DataManager:
 
         if ticker[:2] == 'UC':
             r = self.load_uc()[ticker]
-        elif ticker == 'SPY US Equity':
-            lib_data = lib.read(ticker)
-            df = lib_data.data
-            meta_data = lib_data.metadata
-            df['ticker'] = ticker
-            r = Equity(ticker=t, calendar=CalendarType.US, cost_bps=0.0, currency='USD',
-                       cost_unit=0.005, market_data=df, days2settle=1, metadata=meta_data)
         elif ticker == 'BZACCETP Index':
             lib_data = lib.read(ticker)
             df = lib_data.data
