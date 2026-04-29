@@ -26,7 +26,7 @@ class Portfolio(Asset):
     cash: dict[dt.datetime, dict[str, float]]
 
     def __init__(self, name: str, begin_date: dt.datetime, start_nav: float = 100000000.0, currency: str = 'BRL',
-                 calendar: CalendarType = CalendarType.BR, cash_index: dict[str,str] = {'BRL':'BZACCETP Index'}) -> None:
+                 calendar: CalendarType = CalendarType.BR, cash_index: dict[str,str] = {'BRL':'BZACCETP Index', 'USD':'LD20TRUU Index'}) -> None:
 
         super().__init__(ticker=name, asset_type=AssetType.fund, currency=currency, calendar=calendar)
 
@@ -461,7 +461,14 @@ class Portfolio(Asset):
                 for k in list(self.positions[self.last_update]['provision']):
                     if self.positions[self.last_update]['provision'][k]['maturity'] == process_date:
                         curr_prov = self.positions[self.last_update]['provision'][k]['currency']
-                        self.cash[process_date][curr_prov] += self.positions[self.last_update]['provision'][k]['value']
+
+                        # Get currency to convert P&L if quote currency is different from settlement currency
+                        if curr_prov != self.currency:
+                            c = DataManager().load(ticker=curr_prov + self.currency + ' Curncy')[curr_prov + self.currency + ' Curncy']
+                            c = c.get_close(date=process_date)
+                        else:
+                            c = 1.0
+                        self.cash[process_date][self.currency] += self.positions[self.last_update]['provision'][k]['value'] * c
                     else:
                         new_prov = {'ticker': self.positions[self.last_update]['provision'][k]['ticker'],
                                     'maturity': self.positions[self.last_update]['provision'][k]['maturity'],
@@ -473,7 +480,13 @@ class Portfolio(Asset):
                 for k in list(self.positions[process_date]['provision']):
                     if self.positions[process_date]['provision'][k]['maturity'] == process_date:
                         curr_prov = self.positions[process_date]['provision'][k]['currency']
-                        self.cash[process_date][curr_prov] += self.positions[end]['provision'][k]['value']
+                        # Get currency to convert P&L if quote currency is different from settlement currency
+                        if curr_prov != self.currency:
+                            c = DataManager().load(ticker=curr_prov + self.currency + ' Curncy')[curr_prov + self.currency + ' Curncy']
+                            c = c.get_close(date=process_date)
+                        else:
+                            c = 1.0
+                        self.cash[process_date][self.currency] += self.positions[process_date]['provision'][k]['value'] * c
                         del self.positions[process_date]['provision'][k]
                     elif self.positions[process_date]['provision'][k]['value'] == 0.0:
                         del self.positions[process_date]['provision'][k]
