@@ -101,4 +101,6 @@ class PortfolioManager(ABC):
         self.portfolio.get_positions().to_excel(excel_writer=excel_writer, sheet_name='positions')
         self.portfolio.market_data.to_excel(excel_writer=excel_writer, sheet_name='data')
         self.portfolio.get_trades().to_excel(excel_writer=excel_writer, sheet_name='trades')
+        self.portfolio.get_provisions().to_excel(excel_writer=excel_writer, sheet_name='provisions')
+        self.portfolio.get_cash().to_excel(excel_writer=excel_writer, sheet_name='cash')
         excel_writer.close()
