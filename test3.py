@@ -10,12 +10,15 @@ if __name__ == '__main__':
     print(dt.datetime.now())
 
     name = 'RiskParity'
-    p = Portfolio(name=name, begin_date=dt.datetime(2003, 2, 3), currency='USD', calendar=CalendarType.US, cash_index={'BRL':'BZACCETP Index', 'USD':'LD20TRUU Index'})
-    pm = RiskParity(name=name, first_trade=dt.datetime(2003, 2, 3), trade_calendar=CalendarType.US, portfolio=p)
+    p = Portfolio(name=name, begin_date=dt.datetime(2006, 1, 2), currency='BRL', calendar=CalendarType.US, cash_index={'BRL':'BZACCETP Index', 'USD':'LD20TRUU Index'})
+    pm = RiskParity(name=name, first_trade=dt.datetime(2006, 1, 2), trade_calendar=CalendarType.US, portfolio=p)
     #update decision data
-    pm.load_data(tickers=['EWZ US Equity', 'XLF US Equity', 'XLB US Equity', 'XLC US Equity',
+    pm.load_data(tickers=['XLF US Equity', 'XLB US Equity', 'XLC US Equity',
                           'XLE US Equity','XLI US Equity', 'XLK US Equity', 'XLP US Equity',
-                          'XLRE US Equity', 'XLU US Equity', 'XLV US Equity', 'XLY US Equity'])
+                          'XLRE US Equity', 'XLU US Equity', 'XLV US Equity', 'XLY US Equity',
+                          'IBOV Index', 'BZRFIMB5 Index', 'BZRFIB5+ Index', 'BZRFIRF1 Index', 'BZRFIR1+ Index', 'BZACCETP Index', 'LD20TRUU Index'])
+
+    # pm.load_data(tickers=['SPY US Equity'])
 
     bt = PortfolioCalculator(portfolio_manager=pm)
     bt.run(end_date=dt.datetime(2026,3,31), run_all=True)

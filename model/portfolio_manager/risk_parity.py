@@ -58,7 +58,15 @@ class RiskParity(PortfolioManager):
             tmp = v.market_data
             df_ret = pd.concat([df_ret, tmp.reset_index()[['date', 'ticker', 'close']]])
         df_ret = df_ret.pivot(index='date', columns='ticker', values='close')
-        df_ret = np.log(df_ret).diff().fillna(0)
+        df_ret = np.log(df_ret).diff()
+        for c in df_ret.columns:
+            if c in ['IBOV Index', 'BZRFIMB5 Index', 'BZRFIB5+ Index', 'BZRFIRF1 Index', 'BZRFIR1+ Index']:
+                df_ret[c] = df_ret[c] - df_ret['BZACCETP Index']
+            elif c[-9:] == 'US Equity':
+                df_ret[c] = df_ret[c] - df_ret['LD20TRUU Index']
+
+        df_ret = df_ret.drop(['BZACCETP Index', 'LD20TRUU Index'], axis=1)
+        df_ret = df_ret.fillna(0)
         df_cov = pd.DataFrame()
 
         lw = LedoitWolf()
@@ -69,8 +77,7 @@ class RiskParity(PortfolioManager):
             window_data = window_data[cov_assets]
             lw.fit(window_data.values)
             if df_cov.empty:
-                df_cov = pd.DataFrame(index=pd.MultiIndex.from_product([[window_data.index[-1]], cov_assets]),
-                                      columns=cov_assets, data=lw.covariance_)
+                df_cov = pd.DataFrame(index=pd.MultiIndex.from_product([[window_data.index[-1]], cov_assets]), columns=cov_assets, data=lw.covariance_)
             else:
                 df_cov = pd.concat([df_cov, pd.DataFrame(index=pd.MultiIndex.from_product([[window_data.index[-1]], cov_assets]),
                                      columns=cov_assets, data=lw.covariance_)])
@@ -82,10 +89,6 @@ class RiskParity(PortfolioManager):
         pass
 
     def next(self, date: dt.datetime):
-        current_port = self.portfolio.get_data_by_date(date)
-        nav = current_port.iat[0, current_port.columns.get_loc('NAV')]
-        current_pos = self.portfolio.get_positions_d1(date)
-
         #get cov data
         df_cov = self.data[self.data.index.get_level_values(0) < date]
 
@@ -101,12 +104,25 @@ class RiskParity(PortfolioManager):
             df_cov = df_cov[df_cov.index.get_level_values(1).isin(selected_assets)][selected_assets]
             x = [1 / len(selected_assets)] * len(selected_assets)  # your risk budget percent of total portfolio risk (equal risk)
             cons = ({'type': 'eq', 'fun': _total_weight_constraint}, {'type': 'ineq', 'fun': _long_only_constraint})
-            bounds = [(0.2, 0.2)] + [(0.0, 0.15) for _ in range(len(selected_assets) - 1)]
+            bounds = []
+            for c in df_cov.columns:
+                if c == 'IBOV Index':
+                    bounds.append((0.2, 0.2))
+                elif c == 'BZRFIB5 Index':
+                    bounds.append((0.1, 0.1))
+                elif c == 'BZRFIB5+ Index':
+                    bounds.append((0.1, 0.1))
+                elif c == 'BZRFIRF1 Index':
+                    bounds.append((0.1, 0.1))
+                elif c == 'BZRFIR1+ Index':
+                    bounds.append((0.3, 0.3))
+                else:
+                    bounds.append((0.01, 0.15))
             res = minimize(_risk_budget_objective, x, args=[df_cov.values, x], method='SLSQP', constraints=cons, tol=1e-12, bounds=bounds, options={'disp': False})
-            df_pos = pd.DataFrame(index=[date], columns=selected_assets, data=[res.x])
+            df_pos = pd.DataFrame(index=[date], columns=df_cov.columns, data=[res.x])
 
             for c in df_pos.columns:
-                if c != 'EWZ US Equity':
-                    self.portfolio.add_order_equity_perc(date=date, ticker=c, perc=df_pos[c].values[0]*0.95)
+                #if c not in ['IBOV Index', 'BZRFIMB5 Index', 'BZRFIB5+ Index', 'BZRFIRF1 Index', 'BZRFIR1+ Index']:
+                self.portfolio.add_order_equity_perc(date=date, ticker=c, perc=df_pos[c].values[0])
 
         pass

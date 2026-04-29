@@ -200,11 +200,11 @@ class Portfolio(Asset):
 
         Return empty dataframe if the date is not valid
         """
-        pos = pd.DataFrame(columns=['datetime', 'ticker', 'asset', 'qty', 'price', 'value'])
+        pos = pd.DataFrame(columns=['datetime', 'ticker', 'asset', 'currency', 'value', 'fx'])
         for k1, p1 in self.positions.items():
             for p in self.positions[k1]['provision'].values():
-                tmp = pd.DataFrame(columns=['datetime', 'ticker', 'asset', 'qty', 'price', 'value'],
-                                   data=[[k1, p['ticker'], 'provision', p['qty'], p['price'], p['qty'] * p['m'] * p['price']]])
+                tmp = pd.DataFrame(columns=['datetime', 'ticker', 'asset', 'currency', 'value', 'fx'],
+                                   data=[[k1, p['ticker'], 'provision', p['currency'], p['value'], p['c']]])
                 if pos.empty:
                     pos = tmp
                 else:
@@ -221,7 +221,7 @@ class Portfolio(Asset):
         """
         cash = pd.DataFrame(columns=['datetime', 'currency', 'asset', 'value'])
         for k1, c1 in self.cash.items():
-            for k2, c2 in self.cash[k1]:
+            for k2, c2 in self.cash[k1].items():
                 tmp = pd.DataFrame(columns=['datetime', 'currency', 'asset', 'value'],
                                    data=[[k1, k2, 'cash', c2]])
                 if cash.empty:
@@ -257,22 +257,25 @@ class Portfolio(Asset):
         self.trades[date]['equity'].append({'date': date, 'ticker': ticker, 'qty': qty, 'price': price})
 
     def add_order_equity_perc(self, date: dt.datetime, ticker: str, perc: float):
-        # load metadata
-        eq = DataManager().load(ticker)[ticker]
-        if eq.currency != self.currency:
-            c = DataManager().load(ticker=eq.currency + self.currency + ' Curncy')[eq.currency + self.currency + ' Curncy']
-            c = c.get_close(date=date)
-        else:
-            c = 1.0
-        p = eq.get_close(date=date)
-
-        #get current nav
+        # get current nav
         nav = self.get_data()
-        nav = nav.loc[nav.index < date, 'NAV'] #get D-1
+        nav = nav.loc[nav.index < date, 'NAV']  # get D-1
         if nav.empty:
             nav = self.start_nav
         else:
             nav = nav.values[-1]
+
+        # load metadata
+        eq = DataManager().load(ticker)[ticker]
+        d_1 = eq.market_data.index[eq.market_data.index < date].max()
+        p = eq.get_close(date=d_1)
+
+        if eq.currency != self.currency:
+            c = DataManager().load(ticker=eq.currency + self.currency + ' Curncy')[eq.currency + self.currency + ' Curncy']
+            c = c.get_close(date=d_1)
+        else:
+            c = 1.0
+
         # get current position
         current_pos = self.get_positions_d1(date)
         if current_pos.empty:
@@ -423,7 +426,7 @@ class Portfolio(Asset):
                         eq = DataManager().load(ticker=t['ticker'])[t['ticker']]
 
                         # Get currency to convert P&L if quote currency is different from settlement currency
-                        if eq.settlement_currency != eq.settlement_currency:
+                        if eq.currency != eq.settlement_currency:
                             c = DataManager().load(ticker=eq.currency + eq.settlement_currency + ' Curncy')[eq.currency + eq.settlement_currency + ' Curncy']
                             c = c.get_close(date=process_date)
                         else:
@@ -453,7 +456,7 @@ class Portfolio(Asset):
                             new_prov = {'ticker': new_pos['ticker'], 'maturity': self.calendar.workday(process_date, eq.days2settle),
                                         'currency': eq.settlement_currency, 'value': 0.0, 'c': new_pos['c']}
                         new_prov['value'] = new_prov['value'] - cost_bps - cost_unit \
-                                             - t['qty'] * new_pos['m'] * (new_pos['price'] if math.isnan(t['price']) else t['price'])
+                                             - t['qty'] * new_pos['m'] * (new_pos['price'] if math.isnan(t['price']) else t['price']) * c
                         self.positions[process_date]['provision'][new_prov['ticker']] = new_prov
                 # endregion Equities
                 # region Provision
@@ -500,16 +503,7 @@ class Portfolio(Asset):
                 # update values of portfolio
                 total_nav = 0.0
                 for k, p in self.positions[process_date].items():
-                    if k != 'future' and k != 'provision':
-                        for i in p.values():
-                            # Convert P&L if settlement currency is different from portfolio currency
-                            if i['settlement_currency'] != self.currency:
-                                c = DataManager().load(ticker=i['settlement_currency'] + self.currency + ' Curncy')[i['settlement_currency'] + self.currency + ' Curncy']
-                                c = c.get_close(date=process_date)
-                            else:
-                                c = 1.0
-                            total_nav += i['qty'] * i['price'] * i['m'] * c
-                    elif k == 'provision':
+                    if k != 'future':
                         for i in p.values():
                             # Convert P&L if settlement currency is different from portfolio currency
                             if i['currency'] != self.currency:
@@ -517,7 +511,11 @@ class Portfolio(Asset):
                                 c = c.get_close(date=process_date)
                             else:
                                 c = 1.0
-                            total_nav += i['value'] * c
+
+                            if k == 'provision':
+                                total_nav += i['value'] * c
+                            else:
+                                total_nav += i['qty'] * i['price'] * i['m'] * c
                 for k, p in self.cash[process_date].items():
                     # Convert P&L if settlement currency is different from portfolio currency
                     if k != self.currency:
