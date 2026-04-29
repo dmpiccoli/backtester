@@ -59,6 +59,25 @@ class DataManager:
             else:
                 r = Equity(ticker=ticker, calendar=CalendarType.B3, maturity=dt.datetime.max, cost_bps=1.0,
                            cost_unit=0.0, market_data=df, days2settle=1, metadata=meta_data)
+        elif ticker == 'USDBRL Curncy':
+            df_2d = lib.read('BMFXTWO Index').data
+            df_ptax = lib.read('BZLABZLA Index').data
+
+            lib_data = lib.read(ticker)
+            df = pd.concat([df_2d, df_ptax[df_ptax.index < df_2d.index.min()][['close']]]).sort_index()
+            meta_data = lib_data.metadata
+            df['ticker'] = ticker
+            r = Index(ticker=ticker, calendar=CalendarType.NOCAL, currency=ticker[3:6], market_data=df, metadata=meta_data)
+
+
+
+
+        elif ticker[-6:] == 'Curncy':
+            lib_data = lib.read(ticker)
+            df = lib_data.data
+            meta_data = lib_data.metadata
+            df['ticker'] = ticker
+            r = Index(ticker=ticker, calendar=CalendarType.NOCAL, currency=ticker[3:6], market_data=df, metadata=meta_data)
         else:
             lib_data = lib.read(ticker)
             df = lib_data.data
