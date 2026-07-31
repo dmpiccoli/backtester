@@ -41,7 +41,7 @@ class Portfolio(Asset):
         self.cash = {begin_date: {self.currency: start_nav}, d_1: {self.currency: 0.0}}
 
         self.market_data = pd.DataFrame(index=[begin_date], columns=['NAV', 'close', 'r', 'alpha'] + ['cash_' + c for c in self.cash[begin_date].keys()],
-                                             data=[[start_nav, 1.0, 0.0, 0.0] + [c for c in self.cash[begin_date].values()]})
+                                             data=[[start_nav, 1.0, 0.0, 0.0] + [c for c in self.cash[begin_date].values()]])
 
     def _get_positions(self, date: dt.datetime = None) -> pd.DataFrame:
         if date is None:
@@ -171,7 +171,7 @@ class Portfolio(Asset):
             cash = cash.set_index(keys='datetime', drop=True)
         return cash
 
-    def add_order(self, date: dt.datetime, ticker: str, qty: int, price: float = np.nan, asset_type: str):
+    def add_order(self, date: dt.datetime, ticker: str, asset_type: str, qty: int, price: float = np.nan):
         #load metadata
         prices = DataManager().load(ticker)
         meta = prices[ticker]
@@ -186,10 +186,10 @@ class Portfolio(Asset):
         self.trades[date][asset_type].append({'date': date, 'ticker': ticker, 'qty': qty, 'price': price})
 
     def add_order_future(self, date: dt.datetime, ticker: str, qty: int, price: float = np.nan):
-        self.add_order(date, ticker, qty, price, 'future')
+        self.add_order(date=date, ticker=ticker, asset_type='future', qty=qty, price=price)
 
     def add_order_equity(self, date: dt.datetime, ticker: str, qty: int, price: float = np.nan):
-        self.add_order(date, ticker, qty, price, 'equity')
+        self.add_order(date=date, ticker=ticker, asset_type='equity', qty=qty, price=price)
 
     def process(self, end: dt.datetime) -> bool:
         if end < self.begin_date:
