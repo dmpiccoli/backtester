@@ -35,24 +35,30 @@ class Portfolio(Asset):
         d_1 = self.calendar.workday(self.begin_date, -1)
         self.last_update = d_1
 
-        self.positions = {begin_date: {}, d_1: {}}
-
-        self.positions[begin_date]['future'] : dict = {}
-        self.positions[d_1]['future']: dict = {}
-        self.positions[begin_date]['equity'] : dict = {}
-        self.positions[d_1]['equity']: dict = {}
-        self.positions[begin_date]['provision'] : dict = {}
-        self.positions[d_1]['provision']: dict = {}
-
-        self.trades = {begin_date: {}}
-        self.trades[begin_date]['future'] = []
-        self.trades[begin_date]['equity'] = []
-
+        self.positions = {begin_date: {'future': {}, 'equity': {}, 'provision': {}}, d_1: {'future': {}, 'equity': {}, 'provision': {}}}
+        self.trades = {begin_date: {'future': [], 'equity': []}}
         self.cash_index = cash_index
         self.cash = {begin_date: {self.currency: start_nav}, d_1: {self.currency: 0.0}}
 
         self.market_data = pd.DataFrame(index=[begin_date], columns=['NAV', 'close', 'r', 'alpha'] + ['cash_' + c for c in self.cash[begin_date].keys()],
                                              data=[[start_nav, 1.0, 0.0, 0.0] + [c for c in self.cash[begin_date].values()]])
+
+    def _get_positions(self, date: dt.datetime = None) -> pd.DataFrame:
+        if date is None:
+            positions = self.positions
+        else:
+            positions = {date: self.positions.get(date, {})}
+
+        pos = pd.DataFrame(columns=['datetime', 'ticker', 'asset', 'qty', 'price', 'value'])
+        for asset_type, assets in positions.items():
+            for p in assets.values():
+                tmp = pd.DataFrame(columns=['datetime', 'ticker', 'asset', 'qty', 'price', 'value'],
+                                   data=[[date, p['ticker'], asset_type, p['qty'], p['price'], p['qty'] * p['m'] * p['price']]])
+                if pos.empty:
+                    pos = tmp
+                else:
+                    pos = pd.concat([pos, tmp])
+        return pos.set_index(keys='datetime', drop=True)
 
     def get_data_by_date(self, date: dt.datetime) -> pd.DataFrame:
         """
@@ -86,83 +92,16 @@ class Portfolio(Asset):
 
         Return empty dataframe if the date is not valid
         """
-        if len(self.market_data.loc[self.market_data.index < date]['NAV']) > 0:
-            nav = self.market_data.loc[self.market_data.index < date]['NAV'].values[-1]
-            d_1 = self.market_data.loc[self.market_data.index < date]['NAV'].index[-1]
-        else:
-            return pd.DataFrame(columns=['datetime', 'ticker', 'asset', 'qty', 'price', 'value', 'perc'])
+        d_1 = self.calendar.workday(date, -1)
+        return self._get_positions(d_1)
 
-        pos = pd.DataFrame(columns=['datetime', 'ticker', 'asset', 'qty', 'price', 'value', 'perc'])
-        if d_1 in self.positions:
-            for p in self.positions[d_1]['future'].values():
-                tmp = pd.DataFrame(columns=['datetime', 'ticker', 'asset', 'qty', 'price', 'value', 'perc'],
-                                   data=[[d_1, p['ticker'], 'future', p['qty'], p['price'], p['qty'] * p['m'] * p['price'], p['qty'] * p['m'] * p['price'] / nav]])
-                if pos.empty:
-                    pos = tmp
-                else:
-                    pos = pd.concat([pos, tmp])
-
-            for p in self.positions[d_1]['equity'].values():
-                tmp = pd.DataFrame(columns=['datetime', 'ticker', 'asset', 'qty', 'price', 'value', 'perc'],
-                                   data=[[d_1, p['ticker'], 'future', p['qty'], p['price'], p['qty'] * p['m'] * p['price'], p['qty'] * p['m'] * p['price'] / nav]])
-                if pos.empty:
-                    pos = tmp
-                else:
-                    pos = pd.concat([pos, tmp])
-        return pos
-
-    def get_positions(self, date: dt.datetime) -> pd.DataFrame:
+    def get_positions(self, date: dt.datetime = None) -> pd.DataFrame:
         """
         Get all open positions for a specific dates.
 
         Return empty dataframe if there is no positions
         """
-        pos = pd.DataFrame(columns=['datetime', 'ticker', 'asset', 'asset', 'qty', 'price', 'value'])
-        if date in self.positions:
-            for p in self.positions[date]['future'].values():
-                tmp = pd.DataFrame(columns=['datetime', 'ticker', 'asset', 'qty', 'price', 'value'],
-                                   data=[[date, p['ticker'], 'future', p['qty'], p['price'], p['qty'] * p['m'] * p['price']]])
-                if pos.empty:
-                    pos = tmp
-                else:
-                    pos = pd.concat([pos, tmp])
-
-            for p in self.positions[date]['equity'].values():
-                tmp = pd.DataFrame(columns=['datetime', 'ticker', 'asset', 'qty', 'price', 'value'],
-                                   data=[[date, p['ticker'], 'future', p['qty'], p['price'], p['qty'] * p['m'] * p['price']]])
-                if pos.empty:
-                    pos = tmp
-                else:
-                    pos = pd.concat([pos, tmp])
-        pos = pos.set_index(keys='datetime', drop=True)
-        return pos
-
-    def get_positions(self) -> pd.DataFrame:
-        """
-        Get all open positions for all dates.
-
-        Return empty dataframe if the date is not valid
-        """
-        pos = pd.DataFrame(columns=['datetime', 'ticker', 'asset', 'qty', 'price', 'value'])
-        for k1, p1 in self.positions.items():
-            for p in self.positions[k1]['future'].values():
-                tmp = pd.DataFrame(columns=['datetime', 'ticker', 'asset', 'qty', 'price', 'value'],
-                                   data=[[k1, p['ticker'], 'future', p['qty'], p['price'], p['qty'] * p['m'] * p['price']]])
-                if pos.empty:
-                    pos = tmp
-                else:
-                    pos = pd.concat([pos, tmp])
-
-            for p in self.positions[k1]['equity'].values():
-                tmp = pd.DataFrame(columns=['datetime', 'ticker', 'asset', 'qty', 'price', 'value'],
-                                   data=[[k1, p['ticker'], 'equity', p['qty'], p['price'], p['qty'] * p['m'] * p['price']]])
-                if pos.empty:
-                    pos = tmp
-                else:
-                    pos = pd.concat([pos, tmp])
-        if not pos.empty:
-            pos = pos.set_index(keys='datetime', drop=True)
-        return pos
+        return self._get_positions(date)
 
     def get_trades(self) -> pd.DataFrame:
         """
@@ -232,66 +171,25 @@ class Portfolio(Asset):
             cash = cash.set_index(keys='datetime', drop=True)
         return cash
 
-    def add_order_future(self, date: dt.datetime, ticker: str, qty: int, price: float = np.nan):
+    def add_order(self, date: dt.datetime, ticker: str, asset_type: str, qty: int, price: float = np.nan):
         #load metadata
         prices = DataManager().load(ticker)
         meta = prices[ticker]
 
         #min lot adjustment
         qty = round(qty / meta.min_lot)
+
         if date not in self.trades:
             self.trades[date] = {}
-            self.trades[date]['future'] = []
-        self.trades[date]['future'].append({'date': date, 'ticker': ticker, 'qty': qty, 'price': price})
+            self.trades[date][asset_type] = []
+
+        self.trades[date][asset_type].append({'date': date, 'ticker': ticker, 'qty': qty, 'price': price})
+
+    def add_order_future(self, date: dt.datetime, ticker: str, qty: int, price: float = np.nan):
+        self.add_order(date=date, ticker=ticker, asset_type='future', qty=qty, price=price)
 
     def add_order_equity(self, date: dt.datetime, ticker: str, qty: int, price: float = np.nan):
-        #load metadata
-        prices = DataManager().load(ticker)
-        meta = prices[ticker]
-
-        #min lot adjustment
-        qty = round(qty / meta.min_lot)
-        if date not in self.trades:
-            self.trades[date] = {}
-            self.trades[date]['equity'] = []
-        self.trades[date]['equity'].append({'date': date, 'ticker': ticker, 'qty': qty, 'price': price})
-
-    def add_order_equity_perc(self, date: dt.datetime, ticker: str, perc: float):
-        # get current nav
-        nav = self.get_data()
-        nav = nav.loc[nav.index < date, 'NAV']  # get D-1
-        if nav.empty:
-            nav = self.start_nav
-        else:
-            nav = nav.values[-1]
-
-        # load metadata
-        eq = DataManager().load(ticker)[ticker]
-        d_1 = eq.market_data.index[eq.market_data.index < date].max()
-        p = eq.get_close(date=d_1)
-
-        if eq.currency != self.currency:
-            c = DataManager().load(ticker=eq.currency + self.currency + ' Curncy')[eq.currency + self.currency + ' Curncy']
-            c = c.get_close(date=d_1)
-        else:
-            c = 1.0
-
-        # get current position
-        current_pos = self.get_positions_d1(date)
-        if current_pos.empty:
-            old_qty = 0
-        else:
-            current_pos = current_pos.loc[current_pos['ticker'] == ticker]
-            if current_pos.empty:
-                old_qty = 0
-            else:
-                old_qty = current_pos['qty'].values[0]
-        # min lot adjustment
-        qty = math.trunc(nav * perc / p / c / eq.min_lot) * eq.min_lot
-        if date not in self.trades:
-            self.trades[date] = {}
-            self.trades[date]['equity'] = []
-        self.trades[date]['equity'].append({'date': date, 'ticker': ticker, 'qty': qty - old_qty, 'price': np.nan})
+        self.add_order(date=date, ticker=ticker, asset_type='equity', qty=qty, price=price)
 
     def process(self, end: dt.datetime) -> bool:
         if end < self.begin_date:
@@ -315,10 +213,7 @@ class Portfolio(Asset):
                 last_nav = self.market_data.loc[self.market_data.index == self.last_update, 'NAV'].values[0]
 
             #add new date
-            self.positions[process_date] = {}
-            self.positions[process_date]['future'] = {}
-            self.positions[process_date]['equity'] = {}
-            self.positions[process_date]['provision'] = {}
+            self.positions[process_date] = {'future': {}, 'equity': {}, 'provision': {}}
             self.cash[process_date] = { self.currency: last_nav if process_date == self.begin_date else self.cash[max(self.cash.keys())][self.currency] }
 
             try:
@@ -450,14 +345,15 @@ class Portfolio(Asset):
                         new_pos['pnl'] = new_pos['pnl'] + (pnl - cost_bps - cost_unit) * new_pos['c']
 
                         # update provisions
-                        if t['ticker'] in self.positions[process_date]['provision']:
-                            new_prov = self.positions[process_date]['provision'][t['ticker']]
-                        else:
-                            new_prov = {'ticker': new_pos['ticker'], 'maturity': self.calendar.workday(process_date, eq.days2settle),
-                                        'currency': eq.settlement_currency, 'value': 0.0, 'c': new_pos['c']}
-                        new_prov['value'] = new_prov['value'] - cost_bps - cost_unit \
+                        if new_pos['pnl'] != 0.0:
+                            if t['ticker'] in self.positions[process_date]['provision']:
+                                new_prov = self.positions[process_date]['provision'][t['ticker']]
+                            else:
+                                new_prov = {'ticker': new_pos['ticker'], 'maturity': self.calendar.workday(process_date, eq.days2settle),
+                                            'currency': eq.settlement_currency, 'value': 0.0, 'c': new_pos['c']}
+                            new_prov['value'] = new_prov['value'] - cost_bps - cost_unit \
                                              - t['qty'] * new_pos['m'] * (new_pos['price'] if math.isnan(t['price']) else t['price']) * c
-                        self.positions[process_date]['provision'][new_prov['ticker']] = new_prov
+                            self.positions[process_date]['provision'][new_prov['ticker']] = new_prov
                 # endregion Equities
                 # region Provision
                 # process yesterday provisions
