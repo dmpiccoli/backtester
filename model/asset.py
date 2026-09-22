@@ -33,8 +33,6 @@ class Asset(ABC):
     days2settle: int
     cost_bps: float
     cost_unit: float
-    currency: str
-    settlement_currency: str
     market_data: pd.DataFrame
 
     def __init__(self, ticker: str, asset_type: AssetType, calendar: CalendarType = CalendarType.NOCAL, m: float = 1.0, min_lot: int = 1,

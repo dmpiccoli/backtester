@@ -12,8 +12,6 @@ from model.future import Future
 from model.index import Index
 from utils.pcalendar import CalendarType, Calendar
 
-
-
 from core import const
 
 class DataManager:
@@ -28,7 +26,7 @@ class DataManager:
         pass
 
     @cache
-    def _load(self, ticker):
+    def _load(self, ticker:str) -> Asset:
         r = {}
 
         ac = adb.Arctic(const.ARTCIC_DB)
@@ -90,7 +88,7 @@ class DataManager:
         ac = None
         return r
 
-    def load(self, ticker: Union[list, str], begin: dt.datetime = None, end: dt.datetime = None) -> dict[str, Asset]:
+    def load(self, ticker: Union[str, list[str]], begin: dt.datetime = None, end: dt.datetime = None) -> dict[str, Asset]:
         """
         Load data from database
         :param ticker:

@@ -7,7 +7,6 @@ import pandas as pd
 import pickle
 
 import quantstats as qs
-from benchmarks.common import download_file
 
 from core import const
 from utils.pcalendar import Calendar, CalendarType
@@ -76,7 +75,7 @@ class PortfolioManager(ABC):
             raise e
 
     @staticmethod
-    def load(name: str) -> PortfolioManager:
+    def load(name: str):
         """
         Load portfolio manager and portfolio state
         :return: Portfolio manager object
