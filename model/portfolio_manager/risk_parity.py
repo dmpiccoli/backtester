@@ -6,7 +6,6 @@ from scipy.optimize import minimize
 from sklearn.covariance import LedoitWolf
 
 from data.data_manager import DataManager
-from model.future import FutureCode
 from utils.pcalendar import CalendarType
 from model.portfolio.portfolio import Portfolio
 from model.portfolio_manager.portfolio_manager import PortfolioManager
@@ -46,7 +45,7 @@ def _long_only_constraint(x):
 
 class RiskParity(PortfolioManager):
     def __init__(self, name: str, first_trade: dt.datetime = dt.datetime(2000, 1, 1), trade_calendar: CalendarType = CalendarType.B3,
-                 portfolio_calendar: CalendarType = CalendarType.BR, portfolio: Portfolio = None) -> None:
+                 portfolio_calendar: CalendarType = CalendarType.BR, portfolio: Portfolio | None = None) -> None:
 
         super().__init__(name, first_trade, trade_calendar, portfolio_calendar, portfolio)
         pass
