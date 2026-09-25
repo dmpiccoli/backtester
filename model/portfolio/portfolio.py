@@ -397,13 +397,10 @@ class Portfolio(Asset):
                         # update dictionary of positions
                         self.positions[process_date]['future'][new_pos['ticker']] = new_pos
                         # Pnl and cost updates (if price is nan then trade at settle)
-                        cost_bps = abs(t['qty']) * new_pos['m'] * (
-                            new_pos['price'] if math.isnan(t['price']) else t['price']) * fut.cost_bps * new_pos['c']
-                        cost_unit = abs(t['qty']) * new_pos['m'] * (
-                            new_pos['price'] if math.isnan(t['price']) else t['price']) * fut.cost_unit * new_pos['c']
-                        pnl = 0.0 if math.isnan(t['price']) else (new_pos['price'] - t['price']) * t['qty'] * new_pos[
-                            'm'] * new_pos['c']
-                        new_pos['pnl'] = new_pos['pnl'] + (pnl - cost_bps - cost_unit) * new_pos['c']
+                        cost_bps = abs(t['qty']) * new_pos['m'] * (new_pos['price'] if math.isnan(t['price']) else t['price']) * fut.cost_bps * new_pos['c']
+                        cost_unit = abs(t['qty']) * fut.cost_unit * new_pos['c']
+                        pnl = 0.0 if math.isnan(t['price']) else (new_pos['price'] - t['price']) * t['qty'] * new_pos['m'] * new_pos['c']
+                        new_pos['pnl'] = new_pos['pnl'] + (pnl - cost_bps - cost_unit)
 
                         # update provisions
                         if new_pos['pnl'] != 0.0:
