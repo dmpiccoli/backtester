@@ -11,7 +11,7 @@ from model.portfolio_manager.portfolio_manager import PortfolioManager
 
 class FutureRoll(PortfolioManager):
     def __init__(self, name: str, first_trade: dt.datetime = dt.datetime(2000, 1, 1), trade_calendar: CalendarType = CalendarType.B3,
-                 portfolio_calendar: CalendarType = CalendarType.BR, portfolio: Portfolio = None) -> None:
+                 portfolio_calendar: CalendarType = CalendarType.BR, portfolio: Portfolio | None = None) -> None:
 
         super().__init__(name, first_trade, trade_calendar, portfolio_calendar, portfolio)
         pass
