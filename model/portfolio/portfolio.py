@@ -400,7 +400,7 @@ class Portfolio(Asset):
                         cost_bps = abs(t['qty']) * new_pos['m'] * (new_pos['price'] if math.isnan(t['price']) else t['price']) * fut.cost_bps * new_pos['c']
                         cost_unit = abs(t['qty']) * fut.cost_unit * new_pos['c']
                         pnl = 0.0 if math.isnan(t['price']) else (new_pos['price'] - t['price']) * t['qty'] * new_pos['m'] * new_pos['c']
-                        new_pos['pnl'] = new_pos['pnl'] + (pnl - cost_bps - cost_unit)
+                        new_pos['pnl'] = new_pos['pnl'] + pnl - cost_bps - cost_unit
 
                         # update provisions
                         if new_pos['pnl'] != 0.0:
