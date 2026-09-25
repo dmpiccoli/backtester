@@ -53,8 +53,7 @@ class Portfolio(Asset):
         self.cash = {begin_date: {self.currency: start_nav}, d_1: {self.currency: 0.0}}
 
         self.market_data = pd.DataFrame(index=[begin_date],
-                                        columns=['NAV', 'close', 'r', 'alpha'] + ['cash_' + c for c in
-                                                                                  self.cash[begin_date].keys()],
+                                        columns=['NAV', 'close', 'r', 'alpha'] + ['cash_' + c for c in self.cash[begin_date].keys()],
                                         data=[[start_nav, 1.0, 0.0, 0.0] + [c for c in self.cash[begin_date].values()]])
 
     def get_data_by_date(self, date: dt.datetime) -> pd.DataFrame:
@@ -332,8 +331,7 @@ class Portfolio(Asset):
             self.positions[process_date]['equity'] = {}
             self.positions[process_date]['provision'] = {}
             self.cash[process_date] = {
-                self.currency: last_nav if process_date == self.begin_date else self.cash[max(self.cash.keys())][
-                    self.currency]}
+                self.currency: last_nav if process_date == self.begin_date else self.cash[max(self.cash.keys())][self.currency]}
 
             try:
                 # region Futures
@@ -358,8 +356,7 @@ class Portfolio(Asset):
                         if math.isnan(new_pos['price']):
                             new_pos['price'] = p['price']
 
-                        new_pos['pnl'] = new_pos['pnl'] + (
-                                    new_pos['qty'] * (new_pos['price'] - p['price']) * new_pos['m']) * new_pos['c']
+                        new_pos['pnl'] = new_pos['pnl'] + (new_pos['qty'] * (new_pos['price'] - p['price']) * new_pos['m']) * new_pos['c']
                         self.positions[process_date]['future'][new_pos['ticker']] = new_pos
 
                         # Update provisions if it's different then 0
@@ -440,8 +437,7 @@ class Portfolio(Asset):
                         if math.isnan(new_pos['price']):
                             new_pos['price'] = p['price']
 
-                        new_pos['pnl'] = new_pos['pnl'] + (
-                                    new_pos['qty'] * (new_pos['price'] - p['price']) * new_pos['m']) * new_pos['c']
+                        new_pos['pnl'] = new_pos['pnl'] + (new_pos['qty'] * (new_pos['price'] - p['price']) * new_pos['m']) * new_pos['c']
                         self.positions[process_date]['equity'][new_pos['ticker']] = new_pos
 
                 # process trades
@@ -452,8 +448,7 @@ class Portfolio(Asset):
 
                         # Get currency to convert P&L if quote currency is different from settlement currency
                         if eq.currency != eq.settlement_currency:
-                            c = DataManager().load(ticker=eq.currency + eq.settlement_currency + ' Curncy')[
-                                eq.currency + eq.settlement_currency + ' Curncy']
+                            c = DataManager().load(ticker=eq.currency + eq.settlement_currency + ' Curncy')[eq.currency + eq.settlement_currency + ' Curncy']
                             c = c.get_close(date=process_date)
                         else:
                             c = 1.0
@@ -484,9 +479,7 @@ class Portfolio(Asset):
                             new_prov = {'ticker': new_pos['ticker'],
                                         'maturity': self.calendar.workday(process_date, eq.days2settle),
                                         'currency': eq.settlement_currency, 'value': 0.0, 'c': new_pos['c']}
-                        new_prov['value'] = new_prov['value'] - cost_bps - cost_unit \
-                                            - t['qty'] * new_pos['m'] * (
-                                                new_pos['price'] if math.isnan(t['price']) else t['price']) * c
+                        new_prov['value'] = new_prov['value'] - cost_bps - cost_unit - t['qty'] * new_pos['m'] * (new_pos['price'] if math.isnan(t['price']) else t['price']) * c
                         self.positions[process_date]['provision'][new_prov['ticker']] = new_prov
                 # endregion Equities
                 # region Provision
@@ -497,20 +490,17 @@ class Portfolio(Asset):
 
                         # Get currency to convert P&L if quote currency is different from settlement currency
                         if curr_prov != self.currency:
-                            c = DataManager().load(ticker=curr_prov + self.currency + ' Curncy')[
-                                curr_prov + self.currency + ' Curncy']
+                            c = DataManager().load(ticker=curr_prov + self.currency + ' Curncy')[curr_prov + self.currency + ' Curncy']
                             c = c.get_close(date=process_date)
                         else:
                             c = 1.0
-                        self.cash[process_date][self.currency] += self.positions[self.last_update]['provision'][k][
-                                                                      'value'] * c
+                        self.cash[process_date][self.currency] += self.positions[self.last_update]['provision'][k]['value'] * c
                     else:
                         new_prov = {'ticker': self.positions[self.last_update]['provision'][k]['ticker'],
                                     'maturity': self.positions[self.last_update]['provision'][k]['maturity'],
                                     'currency': self.positions[self.last_update]['provision'][k]['currency'],
                                     'value': self.positions[self.last_update]['provision'][k]['value']}
-                        self.positions[process_date]['provision'][
-                            self.positions[self.last_update]['provision'][k]['ticker']] = new_prov
+                        self.positions[process_date]['provision'][self.positions[self.last_update]['provision'][k]['ticker']] = new_prov
 
                 # process today provisions
                 for k in list(self.positions[process_date]['provision']):
@@ -518,13 +508,11 @@ class Portfolio(Asset):
                         curr_prov = self.positions[process_date]['provision'][k]['currency']
                         # Get currency to convert P&L if quote currency is different from settlement currency
                         if curr_prov != self.currency:
-                            c = DataManager().load(ticker=curr_prov + self.currency + ' Curncy')[
-                                curr_prov + self.currency + ' Curncy']
+                            c = DataManager().load(ticker=curr_prov + self.currency + ' Curncy')[curr_prov + self.currency + ' Curncy']
                             c = c.get_close(date=process_date)
                         else:
                             c = 1.0
-                        self.cash[process_date][self.currency] += self.positions[process_date]['provision'][k][
-                                                                      'value'] * c
+                        self.cash[process_date][self.currency] += self.positions[process_date]['provision'][k]['value'] * c
                         del self.positions[process_date]['provision'][k]
                     elif self.positions[process_date]['provision'][k]['value'] == 0.0:
                         del self.positions[process_date]['provision'][k]
@@ -533,8 +521,7 @@ class Portfolio(Asset):
                 # update cash return
                 for k, i in self.cash[process_date].items():
                     q = DataManager().load(self.cash_index[k])[self.cash_index[k]]
-                    self.cash[process_date][k] = self.cash[process_date][k] * (
-                                q.get_close(process_date) / q.get_close(self.last_update))
+                    self.cash[process_date][k] = self.cash[process_date][k] * (q.get_close(process_date) / q.get_close(self.last_update))
                 # endregion Cash
                 # update values of portfolio
                 total_nav = 0.0
@@ -543,8 +530,7 @@ class Portfolio(Asset):
                         for i in p.values():
                             # Convert P&L if settlement currency is different from portfolio currency
                             if i['currency'] != self.currency:
-                                c = DataManager().load(ticker=i['currency'] + self.currency + ' Curncy')[
-                                    i['currency'] + self.currency + ' Curncy']
+                                c = DataManager().load(ticker=i['currency'] + self.currency + ' Curncy')[i['currency'] + self.currency + ' Curncy']
                                 c = c.get_close(date=process_date)
                             else:
                                 c = 1.0
@@ -563,16 +549,10 @@ class Portfolio(Asset):
                     total_nav += p * c
 
                 q = DataManager().load(self.cash_index[self.currency])[self.cash_index[self.currency]]
-                self.market_data = pd.concat([self.market_data,
-                                              pd.DataFrame(index=[process_date],
-                                                           columns=['NAV', 'close', 'r', 'alpha'] + ['cash_' + c for c
-                                                                                                     in self.cash[
-                                                                                                         process_date].keys()],
-                                                           data=[[total_nav, 1.0, 0.0,
-                                                                  total_nav / last_nav - q.get_close(
-                                                                      process_date) / q.get_close(
-                                                                      max(self.last_update, self.begin_date))] +
-                                                                 [c for c in self.cash[process_date].values()]])])
+                self.market_data = pd.concat([self.market_data, pd.DataFrame(index=[process_date],
+                                 columns=['NAV', 'close', 'r', 'alpha'] + ['cash_' + c for c in self.cash[process_date].keys()],
+                                 data=[[total_nav, 1.0, 0.0, total_nav / last_nav - q.get_close(process_date) / q.get_close(max(self.last_update, self.begin_date))] +
+                                                     [c for c in self.cash[process_date].values()]])])
 
                 # update NAV and NAVPS
                 self.market_data['close'] = self.market_data['NAV'] / self.market_data.iloc[0]['NAV']
