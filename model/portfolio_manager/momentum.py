@@ -2,6 +2,7 @@ import datetime as dt
 import math
 
 import numpy as np
+import pandas as pd
 
 from data.data_manager import DataManager
 from utils.pcalendar import CalendarType
@@ -11,17 +12,16 @@ from model.portfolio_manager.portfolio_manager import PortfolioManager
 
 
 class Momentum(PortfolioManager):
-    def __init__(self, name: str, w: int = 21, vol_target: float = 0.08, first_trade: dt.datetime = dt.datetime(2000, 1, 1), trade_calendar: CalendarType = CalendarType.B3,
-                 portfolio_calendar: CalendarType = CalendarType.BR, portfolio: Portfolio = None) -> None:
+    def __init__(self, name: str, w: int = 3, vol_target: float = 0.08, first_trade: dt.datetime = dt.datetime(2000, 1, 1), trade_calendar: CalendarType = CalendarType.B3,
+                 portfolio_calendar: CalendarType = CalendarType.BR, portfolio: Portfolio | None = None) -> None:
 
         super().__init__(name, first_trade, trade_calendar, portfolio_calendar, portfolio)
 
         self.w = w
         self.vol_target = vol_target
-
         pass
 
-    def load_data(self, ticker:str, update=False):
+    def load_data(self, ticker:str, update:bool=False):
         self.data = DataManager().load(ticker)[ticker].market_data
         pass
 
@@ -37,7 +37,7 @@ class Momentum(PortfolioManager):
         self.data.loc[self.data['momentum'] > 0, 'signal'] = 1
         self.data.loc[self.data['momentum'] < 0, 'signal'] = -1
 
-    def next(self, date: dt.datetime):
+    def next(self, date: dt.datetime, data: pd.DataFrame | None = None):
         if date in self.data.index:
             ticker = self.data.loc[self.data.index == date]['ticker'].values[0]
             q = DataManager().load(ticker)[ticker]
