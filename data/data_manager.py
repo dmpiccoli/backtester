@@ -55,8 +55,8 @@ class DataManager:
                 r = Equity(ticker=ticker, calendar=CalendarType.US, maturity=dt.datetime.max, cost_bps=0.0,
                        cost_unit=0.005, market_data=df, days2settle=1, metadata=meta_data)
             else:
-                r = Equity(ticker=ticker, calendar=CalendarType.B3, maturity=dt.datetime.max, cost_bps=1.0,
-                           cost_unit=0.0, market_data=df, days2settle=1, metadata=meta_data)
+                r = Equity(ticker=ticker, calendar=CalendarType.B3, maturity=dt.datetime.max, cost_bps=2.0,
+                           cost_unit=0.0, market_data=df, days2settle=2, metadata=meta_data)
         elif ticker == 'USDBRL Curncy':
             df_2d = lib.read('BMFXTWO Index').data
             df_ptax = lib.read('BZLABZLA Index').data
