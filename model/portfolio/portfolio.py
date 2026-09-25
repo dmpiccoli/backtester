@@ -376,7 +376,7 @@ class Portfolio(Asset):
                         fut = DataManager().load(ticker=t['ticker'])[t['ticker']]
 
                         # Get currency to convert P&L if quote currency is different from settlement currency
-                        if fut.settlement_currency != fut.settlement_currency:
+                        if fut.currency != fut.settlement_currency:
                             c = DataManager().load(ticker=fut.currency + fut.settlement_currency + ' Curncy')[
                                 fut.currency + fut.settlement_currency + ' Curncy']
                             c = c.get_close(date=process_date)
