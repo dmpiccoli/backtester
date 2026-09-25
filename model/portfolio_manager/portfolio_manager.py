@@ -26,7 +26,7 @@ class PortfolioManager(ABC):
     data: Any
 
     def __init__(self, name: str, first_trade: dt.datetime = dt.datetime(2000, 1, 1), trade_calendar: CalendarType = CalendarType.B3,
-                 portfolio_calendar: CalendarType = CalendarType.BR, portfolio: Portfolio = None) -> None:
+                 portfolio_calendar: CalendarType = CalendarType.BR, portfolio: Portfolio | None = None) -> None:
 
         self.name = name
         self.calendar = Calendar(trade_calendar)
@@ -37,7 +37,7 @@ class PortfolioManager(ABC):
             self.portfolio = portfolio
 
     @abstractmethod
-    def load_data(self, update=False):
+    def load_data(self, *args: Any, **kwargs: Any):
         """
         Load decision data
         :return:
@@ -53,7 +53,7 @@ class PortfolioManager(ABC):
         pass
 
     @abstractmethod
-    def next(self, date: dt.datetime, data: pd.DataFrame):
+    def next(self, date: dt.datetime):
         """
         Run every time period to decide what to do
         
