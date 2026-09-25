@@ -20,20 +20,22 @@ if __name__ == '__main__':
     pm.load_data(ticker)
 
     bt = PortfolioCalculator(portfolio_manager=pm)
-    bt.run(end_date=dt.datetime(2024,12,30), run_all=True)
-
-    print(dt.datetime.now())
-    pm.save()
-    print(pm.portfolio.market_data)
+    bt.run(end_date=dt.datetime(2026,8,31), run_all=True)
+    # print(pm.portfolio.market_data)
     pm.report()
+    print(dt.datetime.now())
+    # pm.save()
 
-    # pm2 = Momentum.load(name)
-    # pm2.load_data(ticker)
-    # bt2 = PortfolioCalculator(portfolio_manager=pm2)
-    # bt2.run(run_all=False)
-    #
+    pm2 = Momentum(name=name, first_trade=dt.datetime(2007, 1, 2), trade_calendar=CalendarType.BR, portfolio_calendar=CalendarType.BR)
+    pm2.load_data(ticker)
+    bt2 = PortfolioCalculator(portfolio_manager=pm2)
+    bt2.run(end_date=dt.datetime(2026,8,31), run_all=True)
+
     # print(pm2.portfolio.market_data)
-    pass
+    pm2.report()
+    print(dt.datetime.now())
+    # pm.save()
+
     # p = portfolio.Portfolio('teste', begin_date=dt.datetime(2022, 5, 31))
 
 pass
