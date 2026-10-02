@@ -57,9 +57,9 @@ class FutureRoll(PortfolioManager):
 
             if ticker_buy:
                 fut = DataManager().load(ticker_buy)[ticker_buy]
-                self.portfolio.add_order_future(date=date, ticker=ticker_buy, qty=nav / fut.get_close(date=date) / fut.m)
+                self.portfolio.add_order(date=date, ticker=ticker_buy, qty=nav / fut.get_close(date=date) / fut.m)
 
             if ticker_sell:
                 qty = -current_pos.iloc[0]['qty']
-                self.portfolio.add_order_future(date=date, ticker=ticker_sell, qty=qty)
+                self.portfolio.add_order(date=date, ticker=ticker_sell, qty=qty)
         pass

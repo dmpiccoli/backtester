@@ -51,8 +51,8 @@ class Momentum(PortfolioManager):
 
             #First date
             if current_pos.empty:
-                self.portfolio.add_order_equity(date=date, ticker=ticker, qty=pct_size * nav / price / q.m)
+                self.portfolio.add_order(date=date, ticker=ticker, qty=pct_size * nav / price / q.m)
             else:
                 qty = current_pos.loc[current_pos.ticker == ticker]['qty'][0]
-                self.portfolio.add_order_equity(date=date, ticker=ticker, qty=pct_size * nav / price / q.m - qty)
+                self.portfolio.add_order(date=date, ticker=ticker, qty=pct_size * nav / price / q.m - qty)
         pass

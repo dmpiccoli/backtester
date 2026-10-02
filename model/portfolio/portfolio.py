@@ -4,6 +4,7 @@ import math
 
 import pandas as pd
 from data.data_manager import DataManager
+from model import asset
 from model.asset import Asset, AssetType
 
 from utils.pcalendar import Calendar, CalendarType
@@ -242,25 +243,27 @@ class Portfolio(Asset):
             cash = cash.set_index(keys='datetime', drop=True)
         return cash
 
-    def add_order_future(self, date: dt.datetime, ticker: str, qty: int, price: float = np.nan):
+    def add_order(self, date: dt.datetime, ticker: str, qty: int, price: float = np.nan):
         # load metadata
-        prices = DataManager().load(ticker)
-        meta = prices[ticker]
+        asset = DataManager().load(ticker)[ticker]
 
         # min lot adjustment
-        qty = round(qty / meta.min_lot)
+        qty = round(qty / asset.min_lot) * asset.min_lot
+
+        if asset.asset_type == AssetType.future:
+            self.add_order_future(asset, date, ticker, qty, price)
+        elif asset.asset_type == AssetType.equity:
+            self.add_order_equity(asset, date, ticker, qty, price)
+        else:
+            raise ValueError(f"Orders are not supported for asset type '{asset.asset_type}'.")
+
+    def add_order_future(self, asset: Asset, date: dt.datetime, ticker: str, qty: int, price: float = np.nan):
         if date not in self.trades:
             self.trades[date] = {}
             self.trades[date]['future'] = []
         self.trades[date]['future'].append({'date': date, 'ticker': ticker, 'qty': qty, 'price': price})
 
-    def add_order_equity(self, date: dt.datetime, ticker: str, qty: int, price: float = np.nan):
-        # load metadata
-        prices = DataManager().load(ticker)
-        meta = prices[ticker]
-
-        # min lot adjustment
-        qty = round(qty / meta.min_lot)
+    def add_order_equity(self, asset: Asset, date: dt.datetime, ticker: str, qty: int, price: float = np.nan):
         if date not in self.trades:
             self.trades[date] = {}
             self.trades[date]['equity'] = []
@@ -330,8 +333,7 @@ class Portfolio(Asset):
             self.positions[process_date]['future'] = {}
             self.positions[process_date]['equity'] = {}
             self.positions[process_date]['provision'] = {}
-            self.cash[process_date] = {
-                self.currency: last_nav if process_date == self.begin_date else self.cash[max(self.cash.keys())][self.currency]}
+            self.cash[process_date] = {self.currency: last_nav if process_date == self.begin_date else self.cash[max(self.cash.keys())][self.currency]}
 
             try:
                 # region Futures

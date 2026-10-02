@@ -57,8 +57,8 @@ class Rsi(PortfolioManager):
             current_pos = self.portfolio.get_positions_d1(date)
 
             if current_pos.empty and signal <= 20:
-                self.portfolio.add_order_equity(date=date, ticker=ticker, qty=pct_size * nav / price / q.m)
+                self.portfolio.add_order(date=date, ticker=ticker, qty=pct_size * nav / price / q.m)
             elif not current_pos.empty and price > last_high:
                 qty = current_pos.loc[current_pos.ticker == ticker]['qty'][0]
-                self.portfolio.add_order_equity(date=date, ticker=ticker, qty=-qty)
+                self.portfolio.add_order(date=date, ticker=ticker, qty=-qty)
         pass
