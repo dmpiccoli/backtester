@@ -1,3 +1,4 @@
+import re
 from functools import cache
 from typing import Union
 
@@ -66,10 +67,6 @@ class DataManager:
             meta_data = lib_data.metadata
             df['ticker'] = ticker
             r = Index(ticker=ticker, calendar=CalendarType.NOCAL, currency=ticker[3:6], market_data=df, metadata=meta_data)
-
-
-
-
         elif ticker[-6:] == 'Curncy':
             lib_data = lib.read(ticker)
             df = lib_data.data
@@ -104,6 +101,18 @@ class DataManager:
             r[t] = self._load(t)
         return r
 
+    def search_ticker(self, ticker:str) -> list[str]:
+        """
+        Search ticker in database
+        :return: list of tickers
+        """
+        ac = adb.Arctic(const.ARTCIC_DB)
+        lib = ac.get_library(const.LIBRARY_DATA)
+
+        ucs = list(self.load_uc().keys())
+
+        return lib.list_symbols(regex='^' + ticker.upper()) + [u for u in ucs if re.compile('^' + ticker.upper()).search(u)]
+
     @cache
     def load_uc(self):
         code_future = pd.DataFrame.from_dict(
@@ -113,7 +122,7 @@ class DataManager:
 
         path_b3 = 'd:\\OneDrive\\MarketData\\SistemaPregao\\'
         file_name = 'DOL.xlsx'
-        df = pd.read_excel(path_b3 + file_name, engine='openpyxl')
+        df = pd.read_excel(path_b3 + file_name, engine='calamine')
         df['DATE'] = pd.to_datetime(df['DATE'])
         df['c'] = df['MATURITY_CODE'].str[0:1]
         df = df.merge(code_future, on='c')
