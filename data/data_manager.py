@@ -73,6 +73,9 @@ class DataManager:
             meta_data = lib_data.metadata
             df['ticker'] = ticker
             r = Index(ticker=ticker, calendar=CalendarType.NOCAL, currency=ticker[3:6], market_data=df, metadata=meta_data)
+        elif ticker == 'CONST_BRL':
+            df = pd.DataFrame(index=pd.date_range(dt.datetime(2002, 1, 3), dt.datetime.today()), columns=['close'], data=1)
+            r = Index(ticker=ticker, calendar=CalendarType.BR, currency='BRL', market_data=df)
         else:
             lib_data = lib.read(ticker)
             df = lib_data.data
@@ -106,11 +109,13 @@ class DataManager:
         Search ticker in database
         :return: list of tickers
         """
+        if ticker is None or ticker == '':
+            return []
+
         ac = adb.Arctic(const.ARTCIC_DB)
         lib = ac.get_library(const.LIBRARY_DATA)
 
         ucs = list(self.load_uc().keys())
-
         return lib.list_symbols(regex='^' + ticker.upper()) + [u for u in ucs if re.compile('^' + ticker.upper()).search(u)]
 
     @cache
