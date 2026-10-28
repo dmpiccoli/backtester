@@ -3,7 +3,7 @@ import datetime as dt
 import pandas as pd
 
 from data.data_manager import DataManager
-from model.future import FutureCode
+from model.future import FutureCode, Future
 from utils.pcalendar import CalendarType
 from model.portfolio.portfolio import Portfolio
 from model.portfolio_manager.portfolio_manager import PortfolioManager
@@ -14,16 +14,23 @@ class FutureRoll(PortfolioManager):
                  portfolio_calendar: CalendarType = CalendarType.BR, portfolio: Portfolio | None = None) -> None:
 
         super().__init__(name, first_trade, trade_calendar, portfolio_calendar, portfolio)
-        pass
+        self.ticker_root = None
 
-    def load_data(self, ticker:str, update=False):
-        uc = DataManager().load_uc()
+    def load_data(self):
+        tickers = DataManager().search_ticker(self.ticker_root)
+        if self.ticker_root + '1 Curncy' in tickers:
+            tickers.remove(self.ticker_root + '1 Curncy')
+
+        futures = DataManager().load(tickers)
         df = pd.DataFrame()
-        for k, f in uc.items():
+        df_first_notice = pd.DataFrame()
+
+        for k, f in futures.items():
             df = pd.concat(objs=[df, f.market_data.reset_index()[['datetime', 'ticker', 'close']]], axis=0)
+            df_first_notice = pd.concat(objs=[df_first_notice, pd.DataFrame.from_dict({'ticker':[k], 'first_notice':[f.first_notice]})], axis=0)
 
         df = df.pivot(index='datetime', columns='ticker', values='close')
-        self.data = df
+        self.data = {'prices': df, 'first_notice':df_first_notice}
         pass
 
     def once(self):
@@ -37,23 +44,19 @@ class FutureRoll(PortfolioManager):
         ticker_buy = None
         ticker_sell = None
 
-        if date in self.data.index:
-            i = self.data.index.get_loc(date)
-            if self.data.index[i + 2].month != date.month == 12:
-                # sell current position
-                ticker_sell = current_pos.iloc[0]['ticker']
-                # buy next contract
-                ticker_buy = 'UC' + FutureCode((date.month+1) % 12 + 1).name + str(date.year - 2000 + 1).zfill(2)
+        if date in self.data['prices'].index:
+            df_notice = self.data['first_notice']
+            df = self.data['prices']
 
-            elif self.data.index[i + 1].month != date.month != 12:
-                # sell current position
+            i = self.data['prices'].index.get_loc(date)
+            first_notice = df_notice.loc[df_notice['first_notice'] == df_notice.loc[df_notice['first_notice'] > date]['first_notice'].min(), 'first_notice'].values[0]
+
+            if current_pos.empty:
+                ticker_buy = df_notice.loc[df_notice['first_notice'] == df_notice.loc[df_notice['first_notice'] > date]['first_notice'].min(), 'ticker'].values[0]
+            elif self.calendar.networkdays(date, pd.to_datetime(first_notice)) <= 1:
                 ticker_sell = current_pos.iloc[0]['ticker']
-                # buy next contract
-                ticker_buy = 'UC' + FutureCode((date.month+1) % 12 + 1).name + str(date.year - 2000 + (1 if (date.month+1) % 12 == 0 else 0)).zfill(2)
-            else:
-                #don't need to do anything unless current position is 0
-                if current_pos.empty:
-                    ticker_buy = 'UC' + FutureCode(date.month+1).name + str(date.year - 2000).zfill(2)
+                new_notice = df_notice.loc[df_notice['first_notice'] > df_notice.loc[df_notice['ticker'] == ticker_sell]['first_notice'].values[0]]['first_notice'].min()
+                ticker_buy = df_notice.loc[df_notice['first_notice'] == new_notice, 'ticker'].values[0]
 
             if ticker_buy:
                 fut = DataManager().load(ticker_buy)[ticker_buy]
